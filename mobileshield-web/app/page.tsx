@@ -1,37 +1,24 @@
-/* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useState } from 'react';
+import { Shield } from 'lucide-react';
 import { HeaderBar } from './components/HeaderBar';
 import { ScanForm } from './components/ScanForm';
-import { analyzeUrl } from '@/lib/api';
-import type { AnalysisResponse } from '@/lib/api';
+import { ResultDisplay } from './components/ResultDisplay';
+import { useMessageAnalysis } from './hooks/useMessageAnalysis';
+import { useLanguage } from './context/LanguageContext';
 
 export default function Home() {
-  const [result, setResult] = useState<AnalysisResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  const onAnalyze = async (url: string) => {
-    setLoading(true);
-    setErrorMsg(null);
-    try {
-      const res = await analyzeUrl(url);
-      setResult(res);
-    } catch (e: any) {
-      setErrorMsg(e.message || 'שגיאה');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  const { state, submit, cancel, invalidate, retry } = useMessageAnalysis();
+  const { t } = useLanguage();
   return (
-    <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+    <div className="site-shell">
       <HeaderBar />
-
-      <div className="space-y-6">
-        <ScanForm onSubmit={onAnalyze} loading={loading} result={result} error={errorMsg} />
-      </div>
-    </main>
+      <main id="main-content" className="main-content">
+        <div className="intro"><span className="intro-mark"><Shield size={28} aria-hidden="true" /></span><p className="eyebrow">{t.eyebrow}</p><h1>{t.title}</h1><p>{t.intro}</p></div>
+        <ScanForm onSubmit={request => void submit(request)} onInvalidate={invalidate} loading={state.status === 'loading'} />
+        <ResultDisplay state={state} onCancel={cancel} onRetry={() => void retry()} />
+      </main>
+      <footer className="site-footer"><p>{t.footerNote}</p><nav aria-label={t.contact}><a href="mailto:MobileShield@gmail.com">{t.contact}</a><a href="https://www.linkedin.com/in/ophir-braude-188252378/" target="_blank" rel="noopener noreferrer">LinkedIn</a></nav></footer>
+    </div>
   );
 }

@@ -3,8 +3,8 @@ import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'MobileShield AI | URL Risk Scanner',
-  description: 'Assess SMS links in seconds with MobileShield AI.',
+  title: 'MobileShield | Message warning checks',
+  description: 'Check pasted messages and links for warning signs with MobileShield.',
   icons: [{ rel: 'icon', url: '/favicon.svg' }],
 };
 
