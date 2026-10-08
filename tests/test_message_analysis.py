@@ -259,3 +259,36 @@ def test_new_fronted_secret_after_negated_object_list_is_still_detected(text):
     result = run(text)
     assert result.assessment in ('suspicious', 'phishing')
     assert 'credential_request' in [reason.code for reason in result.reasons]
+
+
+@pytest.mark.parametrize('text,code', [
+    ('Do not send the agenda, your password and the meeting notes, please give them to me.',
+     'credential_request'),
+    ('Do not send the agenda, your password, the report, and the meeting notes, please give them to me.',
+     'credential_request'),
+    ('Do not send the agenda, the report, your password, the meeting notes, please give them to me.',
+     'credential_request'),
+    ('Do not send the agenda, your password and the meeting notes give me now.',
+     'credential_request'),
+    ('Do not send the agenda, your bank details and the meeting notes, please give them to me.',
+     'payment_request'),
+])
+def test_complete_fronted_object_list_survives_earlier_negated_action(text, code):
+    result = run(text)
+    assert result.assessment == 'suspicious'
+    assert result.analysis_status == 'complete'
+    assert code in [reason.code for reason in result.reasons]
+    if code == 'credential_request':
+        assert 'do_not_share_secrets' in result.recommended_actions
+
+
+@pytest.mark.parametrize('text', [
+    'Do not send your password, the meeting notes, please give them to me.',
+    'Do not send your password, PIN, or OTP, give me the agenda and the meeting notes.',
+    'Your password and the meeting notes, do not give them to anyone.',
+])
+def test_plural_ordinary_object_and_negated_fronted_list_remain_prevention_advice(text):
+    result = run(text)
+    assert result.assessment == 'no_clear_signs'
+    assert result.analysis_status == 'complete'
+    assert 'credential_request' not in [reason.code for reason in result.reasons]

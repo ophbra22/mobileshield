@@ -15,11 +15,12 @@ _NEGATED_ACTION_PREFIX = re.compile(
     r"(?:(?:ever|please)\s+)*|(?:אל|לא|אין)\s+)$", re.I,
 )
 _COORDINATED_ACTION = re.compile(r'\b(?:and|or)\s+$', re.I)
-_OBJECT_SEPARATOR = re.compile(r'[,:]|\b(?:and|or)\b', re.I)
+_OBJECT_SEPARATOR = re.compile(r'[,:]')
 _OBJECT_REFERENCE = re.compile(
-    r'^\s+(?:(?:me|us|him|her)\s+)?(?:it|them|this|that)\b'
-    r'|^\s+(?:(?:לי|לנו)\s+)?(?:אותו|אותה|אותם|אותן)(?!\w)', re.I,
+    r'^\s+(?:(?:me|us|him|her|לי|לנו)\s+)?'
+    r'(?P<object>it|them|this|that|אותו|אותה|אותם|אותן)(?!\w)', re.I,
 )
+_ACTION_PRELUDE = re.compile(r'\s*(?:please|בבקשה)?\s*', re.I)
 _URGENCY = re.compile(r'\b(?:now|immediately|urgent(?:ly)?|within \d+ (?:minutes|hours))\b|(?:עכשיו|מיד|דחוף|בדחיפות)', re.I)
 _THREAT = re.compile(r'\b(?:account.{0,30}(?:suspend|close|block)|suspended|locked out)\b|(?:החשבון.{0,25}(?:ייסגר|יחסם|ייחסם))', re.I)
 _LOGIN = re.compile(r'\b(?:log[ -]?in|sign[ -]?in)\b|(?:היכנס|כניסה)', re.I)
@@ -47,18 +48,27 @@ def _positive_actions(prose: str, pattern: re.Pattern):
             previous_negated = negated
             end = actions[index + 1].start() if index + 1 < len(actions) else len(clause)
             if not negated:
-                # Keep the complete prior object list attached to its action.
-                # Only material after the final separator can be a new fronted
-                # object. A pronoun directly governed by this action can refer
-                # back across a comma ("your OTP, please share it").
+                # Conjunctions stay inside object phrases. A later explicit
+                # object does not inherit the previous action's comma list.
                 start = 0 if index == 0 else action.end()
                 if index:
                     previous_end = actions[index - 1].end()
                     separators = list(_OBJECT_SEPARATOR.finditer(clause, previous_end, action.start()))
                     if separators:
                         start = separators[-1].end()
-                        if _OBJECT_REFERENCE.match(clause[action.end():end]) and len(separators) > 1:
-                            start = separators[-2].end()
+                        reference = _OBJECT_REFERENCE.match(clause[action.end():end])
+                        if reference:
+                            # A comma before "please give them" ends the object
+                            # phrase, not another item in it. Singular references
+                            # bind to the nearest phrase; plural references keep
+                            # the entire possible fronted list after the previous
+                            # action's initial object. Ambiguous list attachment
+                            # conservatively retains potential request evidence.
+                            if _ACTION_PRELUDE.fullmatch(clause[start:action.start()]):
+                                separators.pop()
+                            plural = reference.group('object').casefold() in {'them', 'אותם', 'אותן'}
+                            boundary = (separators[0] if plural else separators[-1]) if separators else None
+                            start = boundary.end() if boundary else previous_end
                 yield action, clause[start:end]
 
 
