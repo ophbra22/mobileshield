@@ -10,7 +10,7 @@ import { useLanguage } from '../context/LanguageContext';
 interface Props { onSubmit: (request: MessageRequest) => void; onInvalidate: () => void; loading: boolean }
 
 export function ScanForm({ onSubmit, onInvalidate, loading }: Props) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [text, setText] = useState('');
   const [inspectLinks, setInspectLinks] = useState(false);
   const [pasteDenied, setPasteDenied] = useState(false);
@@ -48,7 +48,7 @@ export function ScanForm({ onSubmit, onInvalidate, loading }: Props) {
           <button type="button" className="quiet-button" onClick={() => { changeText(''); inputRef.current?.focus(); }}>{t.clear}</button>
         </div>
       </div>
-      <Textarea id="message-input" ref={inputRef} dir="auto" rows={7} value={text} onChange={event => changeText(event.target.value)} placeholder={t.placeholder}
+      <Textarea id="message-input" ref={inputRef} dir={text.trim() ? 'auto' : lang === 'he' ? 'rtl' : 'ltr'} rows={7} value={text} onChange={event => changeText(event.target.value)} placeholder={t.placeholder}
         aria-describedby={`message-help message-count${overLimit ? ' message-limit' : ''}`} aria-invalid={overLimit} autoComplete="off" spellCheck={false} />
       <div className="input-meta"><p id="message-help">{t.inputHelp}</p><p id="message-count" className={overLimit ? 'count over-limit' : 'count'}><bdi dir="ltr">{count} / 10,000</bdi> {t.characterCount}</p></div>
       {overLimit && <p id="message-limit" className="field-notice">{t.overLimit}</p>}

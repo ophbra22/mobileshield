@@ -14,11 +14,48 @@ const response = () => new Response(JSON.stringify(result), {status:200,headers:
 beforeEach(() => { localStorage.clear(); localStorage.setItem('ms_lang','en'); vi.stubGlobal('fetch',vi.fn().mockResolvedValue(response())); });
 
 describe('message form with the real request lifecycle', () => {
-  it('has a visible message label, auto direction and explicit unchecked inspection', () => {
+  it('has a visible message label, language direction and explicit unchecked inspection', () => {
     show(); const input = screen.getByRole('textbox',{name:'Message to check'});
-    expect(screen.getByText('Message to check')).toBeVisible(); expect(input).toHaveAttribute('dir','auto');
+    expect(screen.getByText('Message to check')).toBeVisible(); expect(input).toHaveAttribute('dir','ltr');
     expect(screen.getByRole('checkbox',{name:'Inspect linked pages too'})).not.toBeChecked();
     expect(screen.queryByText(/AI|confidence|Safe Link/)).not.toBeInTheDocument();
+  });
+  it.each(['en', 'he'] as const)('uses %s direction for an empty draft and follows language changes', language => {
+    localStorage.setItem('ms_lang', language); show();
+    const input = screen.getByRole('textbox');
+    expect(input).toHaveValue('');
+    expect(input).toHaveAttribute('dir', language === 'he' ? 'rtl' : 'ltr');
+    fireEvent.click(screen.getByRole('button', { name: language === 'he' ? 'מעבר לאנגלית' : 'Switch to Hebrew' }));
+    expect(input).toHaveValue('');
+    expect(input).toHaveAttribute('dir', language === 'he' ? 'ltr' : 'rtl');
+  });
+  it.each(['en', 'he'] as const)('uses %s direction for whitespace and updates it after a language change', language => {
+    localStorage.setItem('ms_lang', language); show();
+    const input = screen.getByRole('textbox');
+    const whitespace = ' \t\n ';
+    fireEvent.change(input, { target: { value: whitespace } });
+    expect(input).toHaveValue(whitespace);
+    expect(input).toHaveAttribute('dir', language === 'he' ? 'rtl' : 'ltr');
+    fireEvent.click(screen.getByRole('button', { name: language === 'he' ? 'מעבר לאנגלית' : 'Switch to Hebrew' }));
+    expect(input).toHaveValue(whitespace);
+    expect(input).toHaveAttribute('dir', language === 'he' ? 'ltr' : 'rtl');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it.each([
+    ['en', 'שלום hello https://example.com'], ['he', 'שלום hello https://example.com'],
+    ['en', 'Hello שלום https://example.com'], ['he', 'Hello שלום https://example.com'],
+  ] as const)('keeps automatic text direction in %s for %s through language changes and restores empty direction', (language, text) => {
+    localStorage.setItem('ms_lang', language); show();
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: text } });
+    expect(input).toHaveAttribute('dir', 'auto');
+    fireEvent.click(screen.getByRole('button', { name: language === 'he' ? 'מעבר לאנגלית' : 'Switch to Hebrew' }));
+    expect(input).toHaveValue(text);
+    expect(input).toHaveAttribute('dir', 'auto');
+    fireEvent.click(screen.getByRole('button', { name: language === 'he' ? 'Clear' : 'ניקוי' }));
+    expect(input).toHaveValue('');
+    expect(input).toHaveAttribute('dir', language === 'he' ? 'ltr' : 'rtl');
+    expect(fetch).not.toHaveBeenCalled();
   });
   it.each(['en', 'he'])('explains server-visit tracking and one-time-link consequences in %s', (language) => {
     localStorage.setItem('ms_lang', language); show();

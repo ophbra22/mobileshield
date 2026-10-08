@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResultDisplay } from './ResultDisplay';
 import { LanguageProvider, useLanguage, getTranslations } from '@/app/context/LanguageContext';
 import { AnalysisError, parseAnalysisResponse } from '@/lib/analysis';
-import type { Assessment, AnalysisErrorCode } from '@/lib/analysis';
+import type { Assessment, AnalysisErrorCode, Reason } from '@/lib/analysis';
 import type { MessageAnalysisState } from '../hooks/useMessageAnalysis';
 const codes = [
   'credential_request', 'payment_request', 'urgency', 'brand_destination_mismatch',
@@ -65,6 +65,36 @@ beforeEach(() => {
 });
 
 describe('validated evidence presentation', () => {
+  it.each(['en', 'he'] as const)('shows each reason code once per list in %s while preserving independent link evidence', async language => {
+    localStorage.setItem('ms_lang', language);
+    const s = state('suspicious', 'partial');
+    if (s.status !== 'result') throw Error('fixture');
+    const first: Reason = { code: 'brand_destination_mismatch', strength: 'medium', source: 'url', link_id: 'link-1', params: { display_host: 'one.example', expected_host: 'paypal.com', brand: 'paypal' } };
+    const second: Reason = { ...first, params: { ...first.params, expected_host: 'microsoft.com', brand: 'microsoft' } };
+    const third: Reason = { ...first, link_id: 'link-2', params: { ...first.params, display_host: 'two.example' } };
+    const urgency: Reason = { code: 'urgency', strength: 'medium', source: 'message', link_id: null, params: {} };
+    const lookalike: Reason = { code: 'lookalike_host', strength: 'medium', source: 'url', link_id: 'link-2', params: { display_host: 'two.example', expected_host: 'paypal.com', brand: 'paypal' } };
+    s.result.reasons = [first, urgency, second, lookalike, third];
+    s.result.links = [
+      { ...s.result.links[0], display_host: 'one.example', reasons: [first, urgency, second], limitations: [] },
+      { ...s.result.links[0], link_id: 'link-2', display_host: 'two.example', reasons: [third, lookalike, { ...third, source: 'inspection' }], limitations: ['inspection_failed'] },
+    ];
+    const originalEvidence = JSON.stringify(s.result);
+    show(s);
+    const t = getTranslations(language);
+    const summary = screen.getByRole('heading', { name: t.reasonsTitle }).parentElement!;
+    const expectedSummary = [t.reasons.brand_destination_mismatch, t.reasons.urgency, t.reasons.lookalike_host];
+    expect(within(summary).getAllByRole('listitem').map(item => item.textContent)).toEqual(expectedSummary);
+    await userEvent.setup().click(screen.getByText(`${t.linkDetails} (2)`));
+    const firstLink = screen.getByText('one.example').closest('li')!;
+    const secondLink = screen.getByText('two.example').closest('li')!;
+    expect(within(firstLink).getAllByRole('listitem').map(item => item.textContent)).toEqual(expectedSummary.slice(0, 2));
+    expect(within(secondLink).getAllByRole('listitem').map(item => item.textContent)).toEqual([expectedSummary[0], expectedSummary[2], t.reasons.inspection_failed]);
+    expect(screen.getAllByText(t.reasons.brand_destination_mismatch)).toHaveLength(3);
+    expect(screen.getByText(t.partialHelp)).toBeVisible();
+    expect(screen.getByText(t.reasons.inspection_disabled)).toBeVisible();
+    expect(JSON.stringify(s.result)).toBe(originalEvidence);
+  });
   it('describes observed fields and general certificate verification accurately', () => {
     expect(getTranslations('en').reasons.credential_form).toBe('The linked page contains sign-in or credential fields.');
     expect(getTranslations('en').reasons.payment_form).toBe('The linked page contains payment fields.');

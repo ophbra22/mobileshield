@@ -28,8 +28,8 @@ function ResultContent({ state, onCancel, onRetry }: Props) {
   const reasonCopy = (code: string) => t.reasons[code as keyof typeof t.reasons] ?? t.reasons.unknown_reason;
   const reasonList = (reasons: Reason[]) => (
     <ul className="evidence-list">
-      {reasons.map((reason, index) => (
-        <li key={`${reason.code}-${index}`}>{reasonCopy(reason.code)}</li>
+      {Array.from(new Set(reasons.map(reason => reason.code))).map(code => (
+        <li key={code}>{reasonCopy(code)}</li>
       ))}
     </ul>
   );
