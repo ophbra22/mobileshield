@@ -18,6 +18,14 @@ This change introduces a message-analysis contract and orchestration layer, a sh
 
 Baseline repository: `8abb3078c01ce26e605c9129d48484c770b574e7`. Checkout: `/Users/braude/Documents/Codex/2026-10-08/task/MobileShield`. Branch: `codex/mobileshield-design-review`.
 
+## Approach and tradeoffs
+
+- **Recommended: repair and extend the existing rule engine.** Add focused message parsing and result aggregation, reuse Next.js/FastAPI, and consolidate existing network calls. This provides explainable results without a new provider; subtle social engineering will still require uncertain outcomes and careful evaluation.
+- **Minimal patch:** fix verdict mapping and close unsafe fetching/history, retaining URL-only analysis. It is smaller but does not meet the approved full-message goal.
+- **External semantic AI or reputation service:** could broaden detection, but adds disclosure, credentials, cost and provider evaluation. Defer it to a separate decision.
+
+Static checks by default reduce link activation and data disclosure, at the cost of less destination evidence. An explicit deeper-inspection option provides that evidence when requested. Ephemeral results avoid retaining private content but remove server history and saved reports; the user can inspect the current result in the page.
+
 ## Architecture and data flow
 
 1. The browser sends a bounded message after the user presses Check message.
