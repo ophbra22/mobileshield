@@ -132,6 +132,38 @@ def test_scheme_and_quotation_boundaries(text, url, error):
     assert link.parse_error == error
 
 
+@pytest.mark.parametrize(('host', 'canonical_host'), [
+    ('e\u0301xample.com', 'xn--xample-9ua.com'),
+    ('ש\u05b8\u05c1לו\u05b9ם.com', 'xn--gdbcx4f8ai2f.com'),
+])
+def test_complete_decomposed_idn_labels_are_preserved(host, canonical_host):
+    parsed = parse_message(host)
+    link, = parsed.links
+    assert parsed.text == host
+    assert link.raw == host
+    assert link.canonical_url == f'https://{canonical_host}/'
+    assert link.parse_error is None
+
+
+@pytest.mark.parametrize('host', ['\u0301example.com', 'a\u034fxample.com'])
+def test_invalid_combining_marks_never_expose_a_different_host(host):
+    link, = parse_message(host).links
+    assert link.raw == host
+    assert link.canonical_url is None
+    assert link.parse_error == 'invalid_url'
+
+
+@pytest.mark.parametrize('text', [
+    'ftp:example.com/file', 'gopher:example.com/file',
+    'custom+transport:example.com/path', 'custom.scheme:example.com/path',
+])
+def test_unsupported_schemes_without_slashes_preserve_complete_candidate(text):
+    link, = parse_message(text).links
+    assert link.raw == text
+    assert link.canonical_url is None
+    assert link.parse_error == 'unsupported_scheme'
+
+
 def test_offline_private_suffix_extraction():
     assert extract_domain('a.github.io') == 'a.github.io'
     assert split_domain('a.b.co.il').suffix == 'co.il'

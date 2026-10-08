@@ -14,10 +14,14 @@ from app.message_models import LinkCandidate, MAX_LINKS, ParsedMessage, validate
 
 # Match complete explicit candidates before bare domains; do not discover a
 # different host inside an unsupported scheme or an email address.
-_LABEL = r'[^\W_](?:[\w\-\u200b-\u200f\u202a-\u202e\u2060-\u2069]*[^\W_])?'
+# Python's regex \w excludes Unicode marks. Include the complete Unicode mark
+# categories so a match cannot restart inside a decomposed hostname. IDNA then
+# validates the entire label, including invalid leading/embedded marks.
+_MARKS = ''.join(chr(code) for code in range(0x110000)
+                 if unicodedata.category(chr(code)).startswith('M'))
+_LABEL = rf'[\w{_MARKS}\-\u200b-\u200f\u202a-\u202e\u2060-\u2069]+'
 _CANDIDATES = re.compile(
-    r'(?<![\w@.+-])(?:[a-z][a-z0-9+.\-\u200b-\u200f\u202a-\u202e\u2060-\u2069]*://[^\s<>"\u05f3\u05f4]*'
-    r'|(?:https?|mailto|javascript|data|tel):[^\s<>"\u05f3\u05f4]*'
+    rf'(?<![\w{_MARKS}@.+-])(?:[a-z][a-z0-9+.\-\u200b-\u200f\u202a-\u202e\u2060-\u2069]*:[^\s<>"\u05f3\u05f4]+'
     r'|' + _LABEL + r'(?:\.' + _LABEL + r')+(?::[0-9]+)?(?:[/?#][^\s<>"\u05f3\u05f4]*)?)',
     re.IGNORECASE,
 )
@@ -38,9 +42,13 @@ def _trim_punctuation(raw: str) -> str:
 
 def _explicit_scheme(raw: str) -> str | None:
     match = re.match(r'^([a-z][a-z0-9+.-]*):', raw, re.IGNORECASE)
-    if match and ('://' in raw or match[1].lower() in {'http', 'https', 'mailto', 'javascript', 'data', 'tel'}):
-        return match[1].lower()
-    return None
+    if not match:
+        return None
+    # A bare domain followed by a numeric port is an authority. Preserve the
+    # scheme grammar for every other prefix, including unsupported schemes.
+    if '.' in match[1] and re.match(r'[0-9]+(?:[/?#]|$)', raw[match.end():]):
+        return None
+    return match[1].lower()
 
 
 def _canonicalize(raw: str) -> tuple[str | None, str | None, str | None]:
