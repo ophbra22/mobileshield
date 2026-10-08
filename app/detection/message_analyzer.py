@@ -16,9 +16,20 @@ _NEGATED_ACTION_PREFIX = re.compile(
 )
 _COORDINATED_ACTION = re.compile(r'\b(?:and|or)\s+$', re.I)
 _OBJECT_SEPARATOR = re.compile(r'[,:]')
+# Demonstratives need an object boundary: "that you understand" introduces
+# a clause and "that agenda" names a new object, rather than referring back.
+# A recipient or subordinate adjunct can follow the object ("that to me",
+# "that when you arrive"); a bare adverb must end before another clause.
+_DEMONSTRATIVE_OBJECT_BOUNDARY = (
+    r'(?=\s*(?:$|[,:])|\s+(?:(?:back|over)\s+)?(?:to|with|for|from)\b|'
+    r'\s+(?:when|once|because|if|unless|until|before|after)\b|'
+    r'\s+(?:(?:right\s+)?now|please|back|over|here|there|again|today|tomorrow|later|[a-z]+ly)'
+    r'\s*(?:$|[,:]))'
+)
 _OBJECT_REFERENCE = re.compile(
     r'^\s+(?:(?:me|us|him|her|לי|לנו)\s+)?'
-    r'(?P<object>it|them|this|that|אותו|אותה|אותם|אותן)(?!\w)', re.I,
+    r'(?P<object>it|them|אותו|אותה|אותם|אותן|(?:this|that)'
+    + _DEMONSTRATIVE_OBJECT_BOUNDARY + r')(?!\w)', re.I,
 )
 _ACTION_PRELUDE = re.compile(r'\s*(?:please|בבקשה)?\s*', re.I)
 _URGENCY = re.compile(r'\b(?:now|immediately|urgent(?:ly)?|within \d+ (?:minutes|hours))\b|(?:עכשיו|מיד|דחוף|בדחיפות)', re.I)

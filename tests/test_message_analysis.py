@@ -292,3 +292,37 @@ def test_plural_ordinary_object_and_negated_fronted_list_remain_prevention_advic
     assert result.assessment == 'no_clear_signs'
     assert result.analysis_status == 'complete'
     assert 'credential_request' not in [reason.code for reason in result.reasons]
+
+
+@pytest.mark.parametrize('text', [
+    'Do not share your password, please confirm that you understand.',
+    'Do not share your password, please confirm that the meeting starts tomorrow.',
+    'Do not share your password, please reply that you understand.',
+    'Do not share your password, please confirm that now you understand.',
+    'Do not share your password, please give me that agenda.',
+    'Do not share your bank details, please confirm that you understand.',
+])
+def test_acknowledgment_clause_or_explicit_object_does_not_inherit_negated_secret(text):
+    result = run(text)
+    assert result.assessment == 'no_clear_signs'
+    assert result.analysis_status == 'complete'
+    assert not {'credential_request', 'payment_request'} & {reason.code for reason in result.reasons}
+    assert 'do_not_share_secrets' not in result.recommended_actions
+
+
+@pytest.mark.parametrize('text', [
+    'Do not send the agenda, your password, please give me that.',
+    'Do not send the agenda, your password, please give that to me.',
+    'Do not send the agenda, your password, please confirm that now.',
+    'Do not send the agenda, your password, please share that securely.',
+    'Do not send the agenda, your password, please share that tomorrow.',
+    'Do not send the agenda, your password, please share that when you arrive.',
+    'Do not share your password, please give it to me.',
+    'Do not share your password, please confirm your OTP.',
+])
+def test_delimited_object_reference_and_explicit_secret_still_warn(text):
+    result = run(text)
+    assert result.assessment == 'suspicious'
+    assert result.analysis_status == 'complete'
+    assert 'credential_request' in [reason.code for reason in result.reasons]
+    assert 'do_not_share_secrets' in result.recommended_actions
