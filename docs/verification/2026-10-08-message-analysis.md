@@ -1,6 +1,50 @@
 # Message analysis verification — 8 October 2026
 
-Status: functional integration checks pass; publication remains blocked by unresolved dependency advisories, missing environment-specific acceptance checks, and pending independent controller review. No push, deployment, production scan, history access, credential change or permission change was performed.
+Status: Task8 local migration and full functional verification pass, with zero current npm audit findings. Independent review, controller browser/environment acceptance and release prerequisites remain. Publication is conditionally approved but not performed here.
+
+## Task 8 — dependency migration and Hebrew conjunction regression
+
+The approved local migration starts at `a83337f8aa33f6bb08027902fb8f925096f2eb9e`. R1 is fixed in separate commit `0ee3cfa`: a bounded optional Hebrew conjunction prefix restores requests such as `שלח לי שם וסיסמה` and `שלח לי שם והסיסמה`. Thirteen endpoint-to-TypeScript-parser cases include prevention, explicit contrast, plural, OTP and ordinary-word boundary controls. RED: 6 failures/20 passes; GREEN: 228 focused message/final-review/integration passes. The 60-message evaluation corpus and its labels are unchanged.
+
+Chosen frontend graph:
+
+| Dependency | Final version and rationale |
+| --- | --- |
+| Next | **15.5.27**. The initial 15.5.24 candidate resolves the previously known critical advisory, but a fresh audit reported two additional moderate SSG/ISR advisories affecting `<15.5.27`: [GHSA-4jqv-mc3x-m676](https://github.com/advisories/GHSA-4jqv-mc3x-m676) and [GHSA-mcj8-r9mp-w47p](https://github.com/advisories/GHSA-mcj8-r9mp-w47p). Thus 15.5.27 is the smallest currently verified patched 15.5 target. No Next 16 migration is needed. These advisories describe specific cache/router conditions; this audit is not evidence of an exploited deployment. |
+| React / React DOM | **19.0.8** together; types **19.0.14 / 19.0.6**. Follow the [Next 15 App Router React 19 requirement](https://nextjs.org/docs/app/guides/upgrading/version-15), using the maintained 19.0 patch line ([release](https://github.com/react/react/releases/tag/v19.0.8)) rather than an unnecessary later minor. Framework-bundled RSC fixes are assessed through the patched Next package and final audit; React DOM version alone is not RSC security proof. |
+| Lucide React | **0.474.0**, stable React 19 peer support and compatible declarations. 0.468 passes ordinary project typecheck only because of existing `skipLibCheck`; a dedicated declaration check exposes removed `ReactSVG` ([upstream issue](https://github.com/lucide-icons/lucide/issues/2667)). Inspected adjacent 0.469–0.473 releases retain that reference; 0.474 removes it and passes with library checking enabled. Existing icon imports/API remain. No Lucide 1.x migration. |
+| Tailwind / PostCSS plugin | **4.0.17 / 4.0.17**. Tailwind 3.4.19 still carries the affected braces/selector-parser chains. The last patch of the first v4 minor has a coherent, exact 4.0.17 node/oxide/core graph and clears those chains. 4.0.0 uses floating `^4.0.0` internal dependencies; choosing 4.0.17 avoids mixing internal minor versions and includes the initial release's compatibility fixes. This is a conservative verified patch-line choice, not a claim that every earlier 4.0 patch is vulnerable. Tailwind 4.3.3 is unnecessary. |
+| tailwind-merge | **3.0.0**, the [first release supporting Tailwind 4](https://github.com/dcastil/tailwind-merge/releases/tag/v3.0.0). |
+| PostCSS | **8.5.23**, retained. The existing Next-only override replaces its pinned affected 8.4.31 with the compatible patched PostCSS 8 API; no cross-major override. |
+| ESLint / Next lint config | **8.57.1 / 14.2.35**, deliberately retained with the existing compatible `glob:10.5.0` override. Published Next lint plugins 15.5.27 and 16.4.0 depend on fast-glob3.3.1 → micromatch → unpatched braces, introducing five high audit package flags. Controller approved retaining the existing lint tool, rather than adding that chain or suppressing checks. This maintenance exception requires independent review. |
+
+Lint coverage comparison: both Next plugins expose the same 21 rule names, recommended severities and Core Web Vitals settings. Most implementation changes support ESLint 9 context APIs; Next 15 also exempts metadata images and adds App Router internal-anchor matching to `no-html-link-for-pages`. The current app has only HTTPS/mailto anchors and no metadata image JSX, so those differences do not change current findings. Future internal App Router links need explicit review while the older lint plugin remains. ESLint 8 and `next lint` are deprecated; a clean audit does not resolve that maintenance debt. Raw published-source comparison is in `task8-lint-rule-comparison.json` and `task8-lint-rules-normalized.diff`.
+
+Compatibility edits follow the [Tailwind migration guide](https://tailwindcss.com/docs/upgrade-guide): use `@tailwindcss/postcss`, CSS import plus explicit existing config, remove redundant autoprefixer, preserve the previous account-control color palette and default border/placeholder colors, use explicit sRGB gradients, equivalent blur/focus utilities, and flex gaps in the existing account layouts. Existing scan CSS, RTL/LTR, focus and reduced-motion rules remain. Tailwind 4 requires **Safari16.4+, Chrome111+, Firefox128+**; older browser support is not claimed. Next tracing is explicitly rooted at the frontend directory because the repository has a separate root lockfile. Next-generated route type references are retained. There are no asynchronous request API consumers requiring migration, and no change to no-store scan handling, the retired PDF route's 410/no-store response, auth/key behavior, storage or network policy.
+
+Final verification after the last compatibility correction, using Node26.7.0 and npm11.19.0:
+
+| Command | Actual result | Raw log under `../MobileShield-review/verification-logs/` |
+| --- | --- | --- |
+| `npm --prefix mobileshield-web ci --strict-peer-deps --cache /tmp/mobileshield-task8-npm-cache --fetch-retries=0 --fetch-timeout=15000` | exit0; clean install, no peer bypass | task8-ci-final.log |
+| `npm --prefix mobileshield-web audit --json --cache /tmp/mobileshield-task8-npm-cache --fetch-retries=0 --fetch-timeout=15000` | exit0; **0 vulnerabilities in all severities** | task8-audit-final.json |
+| `.venv/bin/python -m pytest -q` | 551 passed, 3 retained warnings, exit0 | task8-backend-final.log |
+| `.venv/bin/python -m pytest tests/test_scan_integration.py -q` | 17 passed, 3 retained warnings, exit0 | task8-integration-final.log |
+| `npm --prefix mobileshield-web test` | 113 passed in4 files, exit0 | task8-frontend-final.log |
+| `npm --prefix mobileshield-web run typecheck` | exit0 | task8-typecheck-final.log |
+| `npm --prefix mobileshield-web run lint` | exit0; no lint findings | task8-lint-final.log |
+| `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8001 NEXT_TELEMETRY_DISABLED=1 npm --prefix mobileshield-web run build` | exit0; Next15.5.27, 6 generated static pages | task8-build-final.log |
+| `npm --prefix mobileshield-web ls --all` | exit0; valid installed tree | task8-tree-final.log |
+| `git diff --check` | exit0 | task8-diff-check-final.log |
+| Dedicated Lucide declaration `tsc --noEmit --skipLibCheck false --esModuleInterop --moduleResolution bundler --module esnext --target es2017 .../lucide-react.d.ts` | exit0; React19 types checked without hiding dependency errors | task8-lucide-types-green.log |
+
+`task8-results.json` records commands, exit codes, timestamps, exact base and tested product diff SHA256; `task8-tested-product.diff` includes R1 plus the migration. Frontend tests use the default API environment; only the build uses the fixture URL. Final audit success and functional success are separate results. Earlier candidate and failed-probe evidence remains: initial audit6 packages, aligned lint audit5 high packages, initial lock refresh warnings against stale React18 installation, and Lucide declaration RED. Strict clean installation and final tree validation supersede the initial stale-peer warnings. No `--force`, `--legacy-peer-deps`, install-script-policy changes, or blind overrides were used.
+
+Remaining warnings: Requests compatibility, Starlette BlockingPortal and Passlib crypt; npm's existing ESLint/glob/rimraf/inflight/whatwg-encoding/CryptoJS and humanwhocodes deprecations; unchanged install-script-policy notices for esbuild/fsevents/unrs-resolver; Node26 `module.register()` deprecation and Tailwind TypeScript-config module detection. The install/build work despite those notices; none was hidden or solved by changing approval policy. The Next15 lint command itself is deprecated. These are maintenance concerns, not current npm audit findings.
+
+Independent review (especially the lint exception), controller-owned production-mode browser/fixture acceptance and the previously listed environment/rollout prerequisites remain. Render's actual Node/build configuration, PostgreSQL startup, trusted proxy identity and infrastructure retention are not proven by these local checks. Native accessibility omissions below remain not-run. GitHub/Render publication is conditionally approved but **was not performed by Task8**; root owns rollout. No service listeners, external messages, credentials, permissions, paid services, GetEvent or corpus labels were changed.
+
+The sections below are historical Task7/fix-wave evidence. Their earlier dependency counts and authorization boundaries are superseded by this Task8 status.
 
 ## Final whole-branch review fix wave
 

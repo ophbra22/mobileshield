@@ -14,5 +14,5 @@ export const CardTitle = ({ className, ...props }: React.HTMLAttributes<HTMLHead
 );
 
 export const CardContent = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={twMerge('space-y-3', className)} {...props} />
+  <div className={twMerge('flex flex-col gap-3', className)} {...props} />
 );
