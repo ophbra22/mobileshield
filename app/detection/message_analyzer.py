@@ -26,7 +26,7 @@ _REQUEST = re.compile(
 )
 _SECRET = re.compile(
     r'\b(?:otps?|passwords?|passcodes?|pins?|verification codes?|security codes?)\b|'
-    r'(?<!\w)(?:ה?סיסמ(?:ה|א|אות|ות)|ה?קוד(?:י|ים)? (?:ה)?אימות|'
+    r'(?<!\w)ו?(?:ה?סיסמ(?:ה|א|אות|ות)|ה?קוד(?:י|ים)? (?:ה)?אימות|'
     r'ה?קוד(?:ים)? חד פעמי(?:ים)?)(?!\w)', re.I,
 )
 _PAYMENT = re.compile(r'\b(?:payment|money|fee|bank details|card details|credit card|card number|cvv)\b|(?:תשלום|כסף|פרטי אשראי|פרטי כרטיס|דמי משלוח|כרטיס האשראי)', re.I)

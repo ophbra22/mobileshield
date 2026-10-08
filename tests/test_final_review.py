@@ -26,6 +26,19 @@ def deep_result(client, harness, url='https://example.com/'):
 
 
 @pytest.mark.parametrize('text,warning', [
+    ('שלח לי שם וסיסמה', True),
+    ('שלח לי שם והסיסמה', True),
+    ('שלח לי את הסיסמה', True),
+    ('שתפו שם וסיסמאות', True),
+    ('מסרו שם וקודי אימות', True),
+    ('שלחו שם וקוד חד פעמי', True),
+    ('אל תשלח לי שם וסיסמה', False),
+    ('אין לשלוח שם והסיסמה', False),
+    ('לא למסור שם וקודי אימות', False),
+    ('אל תשתפו שם וסיסמאות', False),
+    ('אל תשלח שם וסיסמה אבל מסור שם וקוד אימות', True),
+    ('שלח לי שם וסיסמהבדיקה', False),
+    ('שלח לי שם טסיסמה', False),
     ('Send me your passwords now.', True),
     ('Share your passcodes and verification codes.', True),
     ('Do not send your passwords.', False),
