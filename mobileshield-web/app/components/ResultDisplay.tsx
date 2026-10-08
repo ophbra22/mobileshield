@@ -5,7 +5,11 @@ import type { MessageAnalysisState } from '../hooks/useMessageAnalysis';
 import type { Reason } from '@/lib/analysis';
 import { useLanguage } from '../context/LanguageContext';
 
-interface Props { state: MessageAnalysisState; onCancel: () => void; onRetry: () => void }
+interface Props {
+  state: MessageAnalysisState;
+  onCancel: () => void;
+  onRetry: () => void;
+}
 
 /** Show only the origin; credentials, paths, queries and fragments stay hidden. */
 function maskedDestination(value: string | null): string | null {
@@ -14,13 +18,21 @@ function maskedDestination(value: string | null): string | null {
     const url = new URL(value);
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
     return `${url.protocol}//${url.host}/…`;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function ResultContent({ state, onCancel, onRetry }: Props) {
   const { t } = useLanguage();
   const reasonCopy = (code: string) => t.reasons[code as keyof typeof t.reasons] ?? t.reasons.unknown_reason;
-  const reasonList = (reasons: Reason[]) => <ul className="evidence-list">{reasons.map((reason, index) => <li key={`${reason.code}-${index}`}>{reasonCopy(reason.code)}</li>)}</ul>;
+  const reasonList = (reasons: Reason[]) => (
+    <ul className="evidence-list">
+      {reasons.map((reason, index) => (
+        <li key={`${reason.code}-${index}`}>{reasonCopy(reason.code)}</li>
+      ))}
+    </ul>
+  );
   if (state.status === 'idle') return null;
   if (state.status === 'loading') return (
     <section className="card pending-card" aria-label={t.resultContext}>
@@ -30,8 +42,11 @@ function ResultContent({ state, onCancel, onRetry }: Props) {
   );
   if (state.status === 'error') return (
     <section className="card result-card error-card" aria-labelledby="error-title">
-      <h2 id="error-title">{t.errorTitle}</h2><p>{t.errors[state.error.code]}</p>
-      {state.submittedText !== null && <button type="button" className="secondary-button" onClick={onRetry}>{t.retry}</button>}
+      <h2 id="error-title">{t.errorTitle}</h2>
+      <p>{t.errors[state.error.code]}</p>
+      {state.submittedText !== null && (
+        <button type="button" className="secondary-button" onClick={onRetry}>{t.retry}</button>
+      )}
     </section>
   );
   if (state.status !== 'result') return null;
@@ -41,31 +56,78 @@ function ResultContent({ state, onCancel, onRetry }: Props) {
     <section className={`card result-card assessment-${result.assessment}`} aria-labelledby="assessment-title">
       <div className="assessment-heading">
         <span className="assessment-icon"><Icon size={25} aria-hidden="true" /></span>
-        <div><p className="eyebrow">{t.resultLabel}</p><h2 id="assessment-title">{t.assessments[result.assessment]}</h2></div>
+        <div>
+          <p className="eyebrow">{t.resultLabel}</p>
+          <h2 id="assessment-title">{t.assessments[result.assessment]}</h2>
+        </div>
       </div>
       <p className="muted result-context">{t.resultContext}</p>
       <p>{t.descriptions[result.assessment]}</p>
       {result.assessment === 'no_clear_signs' && <p className="no-guarantee">{t.noGuarantee}</p>}
-      {result.recommended_actions.length > 0 && <div className="action-card"><h3>{t.nextStep}</h3><ul>{result.recommended_actions.map(action => <li key={action}>{t.actions[action]}</li>)}</ul></div>}
-      <div className="reasons-block"><h3>{t.reasonsTitle}</h3>{result.reasons.length ? reasonList(result.reasons) : <p className="muted">{t.noReasons}</p>}</div>
-      <div className="coverage-block"><h3>{t.coverageTitle}</h3><p className="coverage-status">{t[result.analysis_status]}</p>
+      {result.recommended_actions.length > 0 && (
+        <div className="action-card">
+          <h3>{t.nextStep}</h3>
+          <ul>
+            {result.recommended_actions.map(action => <li key={action}>{t.actions[action]}</li>)}
+          </ul>
+        </div>
+      )}
+      <div className="reasons-block">
+        <h3>{t.reasonsTitle}</h3>
+        {result.reasons.length ? reasonList(result.reasons) : <p className="muted">{t.noReasons}</p>}
+      </div>
+      <div className="coverage-block">
+        <h3>{t.coverageTitle}</h3>
+        <p className="coverage-status">{t[result.analysis_status]}</p>
         {result.analysis_status === 'partial' && <p>{t.partialHelp}</p>}
         {result.analysis_status === 'unavailable' && <p>{t.unavailableHelp}</p>}
-        {result.limitations.length > 0 && <ul className="evidence-list">{result.limitations.map((code, index) => <li key={`${code}-${index}`}>{reasonCopy(code)}</li>)}</ul>}
+        {result.limitations.length > 0 && (
+          <ul className="evidence-list">
+            {result.limitations.map((code, index) => <li key={`${code}-${index}`}>{reasonCopy(code)}</li>)}
+          </ul>
+        )}
       </div>
-      {result.links.length > 0 ? <details className="link-details"><summary>{t.linkDetails} ({result.links.length})</summary><p className="muted">{t.maskedHelp}</p>
-        <ol className="link-list">{result.links.map(link => {
-          const normalized = maskedDestination(link.technical?.normalized_url ?? null);
-          const final = maskedDestination(link.technical?.final_url ?? null);
-          return <li key={link.link_id} className="link-card">
-            <h4>{link.display_host ? <bdi dir="ltr">{link.display_host}</bdi> : t.unknownHost}</h4>
-            <p>{t.linkAssessment}: {t.assessments[link.assessment]}</p><p className="inspection-status">{t.inspection[link.inspection_status]}</p>
-            {link.reasons.length > 0 && reasonList(link.reasons)}
-            {link.limitations.length > 0 && <ul className="evidence-list">{link.limitations.map((code,index) => <li key={`${code}-${index}`}>{reasonCopy(code)}</li>)}</ul>}
-            {(normalized || final) && <dl className="destinations">{normalized && <><dt>{t.normalizedDestination}</dt><dd><bdi dir="ltr">{normalized}</bdi></dd></>}{final && <><dt>{t.finalDestination}</dt><dd><bdi dir="ltr">{final}</bdi></dd></>}</dl>}
-          </li>;
-        })}</ol>
-      </details> : <p className="muted no-links">{t.noLinks}</p>}
+      {result.links.length > 0 ? (
+        <details className="link-details">
+          <summary>{t.linkDetails} ({result.links.length})</summary>
+          <p className="muted">{t.maskedHelp}</p>
+          <ol className="link-list">
+            {result.links.map(link => {
+              const normalized = maskedDestination(link.technical?.normalized_url ?? null);
+              const final = maskedDestination(link.technical?.final_url ?? null);
+              return (
+                <li key={link.link_id} className="link-card">
+                  <h4>{link.display_host ? <bdi dir="ltr">{link.display_host}</bdi> : t.unknownHost}</h4>
+                  <p>{t.linkAssessment}: {t.assessments[link.assessment]}</p>
+                  <p className="inspection-status">{t.inspection[link.inspection_status]}</p>
+                  {link.reasons.length > 0 && reasonList(link.reasons)}
+                  {link.limitations.length > 0 && (
+                    <ul className="evidence-list">
+                      {link.limitations.map((code, index) => <li key={`${code}-${index}`}>{reasonCopy(code)}</li>)}
+                    </ul>
+                  )}
+                  {(normalized || final) && (
+                    <dl className="destinations">
+                      {normalized && (
+                        <>
+                          <dt>{t.normalizedDestination}</dt>
+                          <dd><bdi dir="ltr">{normalized}</bdi></dd>
+                        </>
+                      )}
+                      {final && (
+                        <>
+                          <dt>{t.finalDestination}</dt>
+                          <dd><bdi dir="ltr">{final}</bdi></dd>
+                        </>
+                      )}
+                    </dl>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </details>
+      ) : <p className="muted no-links">{t.noLinks}</p>}
     </section>
   );
 }
@@ -77,5 +139,10 @@ export function ResultDisplay(props: Props) {
   const announcement = state.status === 'loading' ? t.checking
     : state.status === 'error' ? t.errorTitle
     : state.status === 'result' ? `${t.resultLabel}: ${t.assessments[state.result.assessment]}` : '';
-  return <><p className="sr-only" role="status" aria-atomic="true">{announcement}</p><ResultContent {...props} /></>;
+  return (
+    <>
+      <p className="sr-only" role="status" aria-atomic="true">{announcement}</p>
+      <ResultContent {...props} />
+    </>
+  );
 }

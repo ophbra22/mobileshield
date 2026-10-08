@@ -6,6 +6,7 @@ export default defineConfig({
     alias: {
       '@/lib': fileURLToPath(new URL('./lib', import.meta.url)),
       '@/components': fileURLToPath(new URL('./app/components', import.meta.url)),
+      '@': fileURLToPath(new URL('.', import.meta.url)),
     },
   },
   esbuild: { jsx: 'automatic' },

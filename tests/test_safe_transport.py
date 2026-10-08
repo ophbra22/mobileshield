@@ -248,7 +248,8 @@ def test_bad_tls_certificate_is_reported_and_connection_closed():
     h.client._connector = connector
     result = h.inspect()
     assert result.limitations == ['certificate_mismatch']
-    assert result.tls.hostname_matches is False
+    assert result.tls.hostname_matches is None  # Not every verification error is a hostname mismatch.
+    assert result.tls.valid_now is None
     assert h.connections[0].closed
 
 

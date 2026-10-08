@@ -90,9 +90,11 @@ def analyze_message(payload: MessageRequest, *, request_id: str, transport: Safe
 def to_legacy_response(result: MessageResponse, raw_url: str) -> dict:
     link = result.links[0] if result.links else None
     technical = link.technical if link else None
+    legacy_assessment = ('legitimate' if result.assessment == 'no_clear_signs'
+                         and result.analysis_status == 'complete' else result.assessment)
     return {
         **result.model_dump(), 'scan_id': None,
-        'status': result.assessment, 'verdict': result.assessment,
+        'status': legacy_assessment, 'verdict': legacy_assessment,
         'normalized_url': technical.normalized_url if technical else None,
         'final_url': technical.final_url if technical else None,
         'resolved_url': technical.final_url if technical else None,

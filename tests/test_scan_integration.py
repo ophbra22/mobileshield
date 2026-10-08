@@ -90,28 +90,32 @@ def test_independent_positive_evidence_survives_limited_coverage(client, text):
 
 def test_all_contract_enums_survive_endpoint_serialization(client, monkeypatch):
     import app.routers.analyze as router
-    from app.message_models import Reason, REASON_PARAM_KEYS, LinkResult
+    from app.message_models import Reason, REASON_PARAM_KEYS, LinkResult, MAX_REASONS
     values = []
     # Controlled valid production response models exercise every accepted enum
     # through FastAPI response validation/serialization and the real TS parser.
-    for assessment in get_args(Assessment):
-        for status in get_args(AnalysisStatus):
-            response = MessageResponse(assessment=assessment, analysis_status=status,
-                                       recommended_actions=list(get_args(ActionCode)), request_id='fixture',
-                                       reasons=[Reason(code=c, strength=strength, source=source)
-                                                for c in REASON_PARAM_KEYS
-                                                for strength, source in [('info', 'message')]][:32],
-                                       links=[LinkResult(link_id=f'link_{i}', assessment=assessment,
-                                                         inspection_status=inspection,
-                                                         reasons=[Reason(code='credential_request', strength=strength, source=source)])
-                                              for i, (inspection, strength, source) in enumerate([
-                                                  ('not_requested', 'info', 'message'), ('completed', 'medium', 'url'),
-                                                  ('blocked', 'strong', 'inspection'), ('failed', 'info', 'url'),
-                                                  ('skipped', 'medium', 'inspection')], 1)])
-            monkeypatch.setattr(router, 'analyze_message', lambda *a, _result=response, **k: _result)
-            result = client.post('/v1/analyze-message', json={'text': 'hello'})
-            assert result.status_code == 200
-            values.append(result.json())
+    reason_codes = list(REASON_PARAM_KEYS)
+    for offset in range(0, len(reason_codes), MAX_REASONS):
+        batch = reason_codes[offset:offset + MAX_REASONS]
+        for assessment in get_args(Assessment):
+            for status in get_args(AnalysisStatus):
+                response = MessageResponse(assessment=assessment, analysis_status=status,
+                                           recommended_actions=list(get_args(ActionCode)), request_id='fixture',
+                                           reasons=[Reason(code=c, strength=strength, source=source)
+                                                    for c in batch
+                                                    for strength, source in [('info', 'message')]],
+                                           links=[LinkResult(link_id=f'link_{i}', assessment=assessment,
+                                                             inspection_status=inspection,
+                                                             reasons=[Reason(code='credential_request', strength=strength, source=source)])
+                                                  for i, (inspection, strength, source) in enumerate([
+                                                      ('not_requested', 'info', 'message'), ('completed', 'medium', 'url'),
+                                                      ('blocked', 'strong', 'inspection'), ('failed', 'info', 'url'),
+                                                      ('skipped', 'medium', 'inspection')], 1)])
+                monkeypatch.setattr(router, 'analyze_message', lambda *a, _result=response, **k: _result)
+                result = client.post('/v1/analyze-message', json={'text': 'hello'})
+                assert result.status_code == 200
+                values.append(result.json())
+    assert {reason['code'] for value in values for reason in value['reasons']} == set(REASON_PARAM_KEYS)
     frontend_roundtrip(values)
 
 

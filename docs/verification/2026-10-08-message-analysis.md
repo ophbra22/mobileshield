@@ -2,7 +2,40 @@
 
 Status: functional integration checks pass; publication remains blocked by unresolved dependency advisories, missing environment-specific acceptance checks, and pending independent controller review. No push, deployment, production scan, history access, credential change or permission change was performed.
 
-## Scope and tested state
+## Final whole-branch review fix wave
+
+The combined fix wave starts at `5e2995d60477f4c5a9274b720a0f70f70e0976e4`. The commit containing this update addresses Important findings I1–I7 and related Minors M1/M2/M3/M4/M6 from `../MobileShield-review/final-branch-review.md`. Independent scoped re-review and the controller's clean production-mode first-load check remain pending; these local checks do not establish release readiness.
+
+- Basic English secret noun plurals and bounded Hebrew request families (imperative gender/number, infinitive and corresponding second-person prevention forms) use the existing action-scoped negation logic. Positive requests and genuine prevention statements run through the ASGI endpoint and actual TypeScript parser. Three matching English plural vocabulary entries were added; the conservative language-coverage limitation remains.
+- Non-2xx HTML has an explicit inspection failure, and useful warning evidence is retained. Tests cover 200/201, 403/404/429/500/503 and successful redirects. Password, one-time-code and card fields are recognized without a form wrapper; form presence remains a separate observation, hidden input metadata does not create a warning, and unseen fields remain unknown after incomplete reads.
+- A monotonic, absolute ten-second inbound POST body-read deadline expires stalled/dribbling uploads, returns sanitized `408 request_timeout` with no-store, generated request ID and allowed-origin CORS, and releases the existing 32-slot work admission. The deadline covers complete buffering and does not renew per chunk. Short injected test budgets exercise all32 slots, overflow and subsequent recovery. This fixed controller-selected budget can reject unusually slow legitimate uploads, which must retry; no environment bypass was added.
+- Read timeout, read error and exhausted inspection budget preserve the bounded observed HTML prefix and positive brand/credential facts while leaving HTML incomplete. The same connection/deadline/guard still applies, with no second fetch. A failed check cannot create no_clear_signs or completed inspection.
+- Parser and network policy share raw-authority validation before canonical reconstruction. Repeated trailing host dots, empty ports and malformed bracket suffixes stay invalid and make zero DNS/connection attempts. Single DNS trailing dots, ordinary punctuation, scheme-matching public ports and IDNs remain supported. The reported bug was silent malformed-authority repair, not a demonstrated SSRF bypass.
+- The legacy HTTP adapter maps complete no_clear_signs to legitimate only in its status/verdict aliases; canonical assessment remains no_clear_signs. Unknown/suspicious/phishing and completion metadata, scan_id:null, no-store and no-database behavior remain. In-process legacy explanations/scores also retain an initial local blocklist hit after a trusted redirect.
+- Certificate verification failures retain a generic warning without falsely setting hostname_matches=false; English/Hebrew copy describes verification failure, and content copy describes fields. Vitest now resolves the general root alias, reason-registry integration coverage batches at the contract cap and asserts the serialized set matches the registry, and dense result JSX/fixtures were expanded for review.
+
+Final actual verification (repository root):
+
+| Command | Result | Raw log |
+| --- | --- | --- |
+| `.venv/bin/python -m pytest tests/test_final_review.py -q` | 57 passed, 3 warnings, exit0 | final-fix-focused-final.log |
+| `.venv/bin/python -m pytest -q` | 538 passed, 3 warnings, exit0 | final-fix-backend.log |
+| `.venv/bin/python -m pytest tests/test_scan_integration.py -q` | 17 passed, 3 warnings, exit0 | final-fix-integration.log |
+| `npm --prefix mobileshield-web test` | 113 passed in4 files, exit0 | final-fix-frontend-test.log |
+| `npm --prefix mobileshield-web run typecheck` | exit0 | final-fix-typecheck.log |
+| `npm --prefix mobileshield-web run lint` | exit0, no warnings/errors | final-fix-lint.log |
+| `env NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8001 NEXT_TELEMETRY_DISABLED=1 npm --prefix mobileshield-web run build` | exit0, Next14.2.35, 6 generated static pages | final-fix-build.log |
+| `git diff --check` | exit0 | final-fix-diff-check.log |
+
+All raw logs remain under `../MobileShield-review/verification-logs/`. `final-fix-results.json` records command exit statuses, exact base and tested diff SHA256; `final-fix-tested-product.diff` includes the new regression file. The full suite was run after the final product/test edits. Subsequent changes only update this documentation and the local coordination report, so suites were not redundantly repeated. The original60 synthetic messages, labels and provenance are unchanged (corpus SHA256 `d621f8ae23f669d7590128f8a21713da52130216769058542165a5bcdcf0f1d7`).
+
+Preserved failures and corrections: main RED33 failed/22 passed (`final-fix-red.log`, exit1), then focused55 passed; M1 RED1 failed, root-alias import RED1 failed suite, and localized-copy RED1 failed/22 passed; all now pass. Expanded focused checking caught1 existing timeout regression because an empty prefix became an empty HTML string; preserving None when no bytes were observed restored497 passing focused cases. The first full frontend run mistakenly inherited the fixture API build URL, causing1 default-URL test failure/112 passes (`final-fix-frontend-fixture-env-failed.log`, exit1). The normal test environment then passed113; only the build uses the fixture URL. No product change was made for that setup error.
+
+M5 remains deferred: Requests compatibility, Starlette BlockingPortal, Passlib crypt, npm deprecations and install-script-policy notices require separate maintenance. No dependency files/install/audit were changed or rerun in this wave. The prior audit remains8 affected packages (2 moderate/5 high/1 critical), including the separate breaking Next/React/Tailwind migration work. Subsequent user approval authorizes that local major-migration follow-up; it has not been performed in this fix wave and publication remains unauthorized. Package presence is not proof of runtime exploitability; the controller's maintainer clarification says the selector-parser advisory does not affect ordinary trusted-source build-time use. Other existing publication blockers and unperformed native accessibility/PostgreSQL/infrastructure checks below remain open. A separately reviewed fail-closed rollout frontend still does not exist. No production scan, push, deployment, new credential/permission, or GetEvent change occurred.
+
+Root owns browser acceptance, screenshot/Library updates and fresh fixture processes. This wave did not stop, start or restart servers. The prior development first-load issue is not diagnosed by a successful build; root must record clean production first-load evidence separately.
+
+## Prior Task7 scope and tested state
 
 Checkout: `/Users/braude/Documents/Codex/2026-10-08/task/MobileShield`; branch `codex/mobileshield-design-review`. Product baseline `8abb3078c01ce26e605c9129d48484c770b574e7`, planning baseline `d87de55`, Task7 base `2f1bb7b06810fc33a25862f1bdbd0581d5114d82`. The Task7 commit accompanying this document contains the tested changes. Logs identify the base plus exact working-tree diffs; new test files are committed alongside this report. Backend checks preceded only the subsequent localized disclosure/test edit; affected frontend checks were rerun after it.
 

@@ -57,8 +57,10 @@ def analyze_html(html: str) -> ContentAnalysis:
     parser.feed(html)
     parser.close()
     credentials = payment = False
-    for attrs, nested in parser.inputs:
-        if not nested and attrs.get('form') not in parser.form_ids:
+    for attrs, _nested in parser.inputs:
+        # JS-driven pages can submit real controls without a form wrapper.
+        # Hidden metadata does not establish a visible request for a secret.
+        if attrs.get('type', '').lower() == 'hidden':
             continue
         values = [attrs.get(key, '').lower() for key in ('name', 'id', 'type', 'autocomplete')]
         tokens = {token for value in values for token in re.split(r'[^a-z0-9]+', value)}

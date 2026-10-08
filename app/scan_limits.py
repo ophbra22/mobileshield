@@ -7,6 +7,7 @@ Infrastructure/proxy log retention must be checked separately before release.
 from __future__ import annotations
 
 from collections import OrderedDict
+import asyncio
 import logging
 import secrets
 import threading
@@ -18,6 +19,7 @@ from starlette.responses import JSONResponse
 MAX_JSON_BYTES = 128 * 1024
 MAX_IDENTITIES = 10_000
 MAX_REQUEST_WORK = 32
+MAX_BODY_READ_SECONDS = 10
 _SCAN_PATHS = frozenset({'/v1/analyze-message', '/v1/analyze'})
 _LOG = logging.getLogger('mobileshield.requests')
 
@@ -161,16 +163,22 @@ class PrivateRequestMiddleware:
                         except ValueError:
                             return await reject(422, 'invalid_request')
                 body = bytearray()
-                while True:
-                    part = await receive()
-                    if part['type'] == 'http.disconnect':
-                        return
-                    chunk = part.get('body', b'')
-                    if len(body) + len(chunk) > MAX_JSON_BYTES:
-                        return await reject(413, 'body_too_large')
-                    body.extend(chunk)
-                    if not part.get('more_body', False):
-                        break
+                try:
+                    # asyncio's monotonic absolute deadline covers the entire
+                    # buffer operation; a new chunk cannot renew the budget.
+                    async with asyncio.timeout(MAX_BODY_READ_SECONDS):
+                        while True:
+                            part = await receive()
+                            if part['type'] == 'http.disconnect':
+                                return
+                            chunk = part.get('body', b'')
+                            if len(body) + len(chunk) > MAX_JSON_BYTES:
+                                return await reject(413, 'body_too_large')
+                            body.extend(chunk)
+                            if not part.get('more_body', False):
+                                break
+                except TimeoutError:
+                    return await reject(408, 'request_timeout')
                 delivered = False
                 async def buffered_receive():
                     nonlocal delivered

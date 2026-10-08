@@ -84,6 +84,7 @@ def run_detection(raw_url: str, db: Session, resolver=None, config: DetectionCon
         'brand_destination_mismatch': 'brand_impersonation', 'lookalike_host': 'lookalike',
         'credential_form': 'credential_form_untrusted', 'payment_form': 'payment_form',
         'certificate_mismatch': 'cert_mismatch',
+        'local_blocklist_hit': 'local_blocklist_hit',
     }
     existing_keys = {component.key for component in score_result.components}
     for reason in link_result.reasons:
@@ -92,7 +93,7 @@ def run_detection(raw_url: str, db: Session, resolver=None, config: DetectionCon
         if weight and key not in existing_keys:
             score_result.add(ScoreComponent(key, weight.points, weight.level, weight.description))
             existing_keys.add(key)
-    if score_result.strong:
+    if score_result.strong or 'local_blocklist_hit' in existing_keys:
         score_result.components = [c for c in score_result.components if c.points >= 0]
     score_result.total = max(0, min(sum(c.points for c in score_result.components), 100))
     status, confidence = classify(score_result, config=config)

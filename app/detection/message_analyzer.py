@@ -7,8 +7,28 @@ import unicodedata
 from app.brand import BRAND_KEYWORDS, PROTECTED_BRANDS, is_official_domain, official_domains_for_brand
 from app.message_models import AssessmentSummary, LinkResult, ParsedMessage, Reason, MAX_REASONS
 
-_REQUEST = re.compile(r"\b(?:send|share|give|enter|provide|confirm|submit|reply|pay|transfer|needs?)\b|(?<!\w)(?:שלח|שלחי|שתף|שתפי|מסור|מסרי|הזן|הזיני|שלמי|שלם|העבר|העבירי|אשר|אשרי|צריך|צריכה)(?!\w)", re.I)
-_SECRET = re.compile(r'\b(?:otp|password|passcode|pin|verification code|security code)\b|(?:סיסמ[אה]|קוד (?:ה)?אימות|קוד חד פעמי)', re.I)
+# Bounded request families: imperative gender/number, infinitive and the
+# corresponding second-person forms used in prevention statements. All pass
+# through the same action-scoped negation logic below.
+_HEBREW_REQUESTS = (
+    r'שלח(?:י|ו)?|לשלוח|תשלח(?:י|ו)?',
+    r'שתף|שתפ(?:י|ו)|לשתף|תשתף|תשתפ(?:י|ו)',
+    r'מסור|מסר(?:י|ו)|למסור|תמסור|תמסר(?:י|ו)',
+    r'הזן|הזינ(?:י|ו)|להזין|תזין|תזינ(?:י|ו)',
+    r'שלם|שלמ(?:י|ו)|לשלם|תשלם|תשלמ(?:י|ו)',
+    r'העבר|העברו|העבירי|העבירו|להעביר|תעביר(?:י|ו)?',
+    r'אשר(?:י|ו)?|לאשר|תאשר(?:י|ו)?',
+    r'צריך|צריכה|צריכים|צריכות',
+)
+_REQUEST = re.compile(
+    r'\b(?:send|share|give|enter|provide|confirm|submit|reply|pay|transfer|needs?)\b|'
+    r'(?<!\w)(?:' + '|'.join(_HEBREW_REQUESTS) + r')(?!\w)', re.I,
+)
+_SECRET = re.compile(
+    r'\b(?:otps?|passwords?|passcodes?|pins?|verification codes?|security codes?)\b|'
+    r'(?<!\w)(?:ה?סיסמ(?:ה|א|אות|ות)|ה?קוד(?:י|ים)? (?:ה)?אימות|'
+    r'ה?קוד(?:ים)? חד פעמי(?:ים)?)(?!\w)', re.I,
+)
 _PAYMENT = re.compile(r'\b(?:payment|money|fee|bank details|card details|credit card|card number|cvv)\b|(?:תשלום|כסף|פרטי אשראי|פרטי כרטיס|דמי משלוח|כרטיס האשראי)', re.I)
 _NEGATED_ACTION_PREFIX = re.compile(
     r"(?:\b(?:do not|don't|never|must not|should not|shouldn't|not to)\s+"

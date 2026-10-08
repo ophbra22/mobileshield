@@ -105,9 +105,8 @@ def score_risk(
     add_if(redirect.used_shortener, 'shortener', 'Known URL shortener used.')
     add_if(redirect.used_shortener and (redirect.final_status is None or redirect.error), 'shortener_unresolved', 'Shortened URL failed to resolve cleanly.')
 
-    if reputation.signals.get('local_blocklist_hit'):
-        result.add(ScoreComponent('local_blocklist_hit', 16, 'medium',
-                                 'Domain matches the limited local blocklist (not verified external intelligence).'))
+    add_if(reputation.signals.get('local_blocklist_hit'), 'local_blocklist_hit',
+           'Domain matches the limited local blocklist (not verified external intelligence).')
 
     # Domain reputation
     if reputation.domain_age_days is not None:
@@ -121,7 +120,7 @@ def score_risk(
     add_if(brand.brand_in_subdomain and _is_public_hosting(parts.registrable_domain), 'public_hosting_brand', 'Brand cues on public hosting platform.')
 
     # Content
-    add_if(content.credential_form and not domain.trusted, 'credential_form_untrusted', 'Page contains a credential form on an untrusted domain.')
+    add_if(content.credential_form and not domain.trusted, 'credential_form_untrusted', 'Page contains credential fields on an untrusted domain.')
     add_if(content.payment_form and not domain.trusted, 'payment_form', 'Page requests payment details on an untrusted domain.')
     if content.brand_claim and brand.brand and brand.brand not in (parts.registrable_domain or ''):
         add_if(True, 'content_brand_mismatch', 'Page content references a brand that differs from the domain.')
@@ -129,7 +128,7 @@ def score_risk(
 
     # TLS / certificate
     add_if(tls.hostname_matches is False, 'cert_mismatch', 'TLS certificate does not match the hostname.')
-    add_if(tls.valid_now is False or tls.error == 'certificate_mismatch', 'cert_invalid', 'TLS certificate is invalid or expired.')
+    add_if(tls.valid_now is False or tls.error == 'certificate_mismatch', 'cert_invalid', 'TLS certificate verification failed.')
 
     # Server indicators (avoid double-counting IP literal)
     add_if(server.is_private and not domain.trusted and not domain.is_ip_literal, 'ip_literal', 'Resolved IP is private/reserved.')

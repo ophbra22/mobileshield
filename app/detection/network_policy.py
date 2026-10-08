@@ -56,6 +56,16 @@ def public_address(value: str) -> str:
     return str(address)
 
 
+def validate_raw_authority(parts) -> None:
+    """Reject malformed authority facts before either parser reconstructs it."""
+    host = parts.hostname
+    if (not parts.netloc or '@' in parts.netloc or not host or '%' in host
+            or parts.netloc.endswith(':') or host.endswith('..')):
+        raise DestinationBlocked()
+    if parts.netloc.startswith('[') and not re.fullmatch(r'\[[0-9a-fA-F:.]+\](?::[0-9]+)?', parts.netloc):
+        raise DestinationBlocked()
+
+
 def canonical_target(url: str) -> NetworkTarget:
     """Authorize syntax and literal addresses; DNS authorization is separate."""
     if (not isinstance(url, str) or not url or len(url) > 16384
@@ -64,18 +74,13 @@ def canonical_target(url: str) -> NetworkTarget:
     try:
         parts = urlsplit(url)
         scheme = parts.scheme.lower()
-        if scheme not in ('http', 'https') or not parts.netloc or '@' in parts.netloc:
+        if scheme not in ('http', 'https'):
             raise DestinationBlocked()
+        validate_raw_authority(parts)
         host = parts.hostname
-        if not host or '%' in host or parts.netloc.endswith(':'):
-            raise DestinationBlocked()
         port = parts.port
         expected_port = 443 if scheme == 'https' else 80
         if port is not None and port != expected_port:
-            raise DestinationBlocked()
-        if host.endswith('..'):
-            raise DestinationBlocked()
-        if parts.netloc.startswith('[') and not re.fullmatch(r'\[[0-9a-fA-F:.]+\](?::[0-9]+)?', parts.netloc):
             raise DestinationBlocked()
         host = host.removesuffix('.').lower()
         try:

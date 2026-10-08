@@ -148,6 +148,7 @@ class SafeTransport:
                 addresses = tuple(public_address(answer) for answer in answers)
                 _remaining(deadline, self._clock)
                 connection = response = None
+                body = None
                 try:
                     connection = self._connector(target, addresses[0], deadline=deadline, clock=self._clock)
                     connection.connect()
@@ -180,6 +181,9 @@ class SafeTransport:
                         target = canonical_target(urljoin(target.url, location))
                         continue
                     result.content_type = (response.getheader('Content-Type', '').split(';')[0].strip().lower() or None)
+                    successful_response = 200 <= response.status < 300
+                    if not successful_response:
+                        result.limitations.append('inspection_failed')
                     encoding = response.getheader('Content-Encoding', 'identity').strip().lower()
                     if result.content_type not in ('text/html', 'application/xhtml+xml') or encoding not in ('', 'identity'):
                         result.limitations.append('inspection_failed')
@@ -188,23 +192,25 @@ class SafeTransport:
                     while True:
                         connection.sock.settimeout(_remaining(deadline, self._clock))
                         chunk = response.read1(min(16384, MAX_BODY_BYTES + 1 - len(body)))
+                        available = MAX_BODY_BYTES - len(body)
+                        body.extend(chunk[:available])
                         _remaining(deadline, self._clock)
                         if not chunk:
                             if not body or getattr(response, 'length', None) not in (0, None):
                                 result.limitations.append('inspection_failed')
-                            else:
+                            elif successful_response:
                                 self._completed(result, 'html')
                             break
-                        available = MAX_BODY_BYTES - len(body)
-                        body.extend(chunk[:available])
                         if len(chunk) > available:
                             result.limitations.append('body_limit')
                             break
-                    # utf-8 replacement can expand invalid bytes; ignore avoids
-                    # exceeding the retained byte cap when re-encoding the text.
-                    result.html = body.decode('utf-8', errors='ignore')
                     break
                 finally:
+                    if body:
+                        # Keep observed positive facts after a late read failure;
+                        # only the normal successful EOF can complete HTML.
+                        # Ignoring invalid UTF-8 also preserves the byte cap.
+                        result.html = body.decode('utf-8', errors='ignore')
                     if response is not None:
                         response.close()
                     if connection is not None:
@@ -214,7 +220,9 @@ class SafeTransport:
         except DestinationBlocked:
             result.limitations.append('destination_blocked')
         except ssl.SSLCertVerificationError:
-            result.tls = CertificateAnalysis(None, None, None, None, None, False, 'certificate_mismatch')
+            # Verification can fail on trust/validity as well as hostname. Keep
+            # the legacy reason code without inventing a hostname observation.
+            result.tls = CertificateAnalysis(None, None, None, None, None, None, 'certificate_mismatch')
             result.limitations.append('certificate_mismatch')
         except TimeoutError:
             result.limitations.append('deadline_exceeded')

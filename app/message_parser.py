@@ -10,6 +10,7 @@ from urllib.parse import quote, urlsplit, urlunsplit
 import idna
 
 from app.detection.url_normalizer import split_domain
+from app.detection.network_policy import validate_raw_authority
 from app.message_models import LinkCandidate, MAX_LINKS, ParsedMessage, validate_message_text
 
 # Match complete explicit candidates before bare domains; do not discover a
@@ -65,7 +66,8 @@ def _canonicalize(raw: str) -> tuple[str | None, str | None, str | None]:
             return None, None, 'invalid_url'
         if parts.username is not None or parts.password is not None:
             return None, None, 'ambiguous_url'
-        host = parts.hostname.lower().rstrip('.')
+        validate_raw_authority(parts)
+        host = parts.hostname.lower().removesuffix('.')
         try:
             host = str(ipaddress.ip_address(host))
             display_host = host
@@ -99,7 +101,7 @@ have has had do does did not no never don't must should shouldn't can cannot
 will would could may might please hello hi thanks thank thankyou goodbye yes
 see meet meeting agenda report missing notes note notebook bring read documentation help
 friend email mail sent send share give enter provide confirm submit reply pay
-transfer need needs password passwords otp pin passcode verification security
+transfer need needs password passwords otp otps pin pins passcode passcodes verification security
 code codes payment money fee bank details card credit number cvv account
 login log sign out suspended suspend close closed block blocked locked secure
 prize delivery official link links website page visit follow verify check review
