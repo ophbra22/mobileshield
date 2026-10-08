@@ -214,3 +214,24 @@ def test_unrelated_negation_preserves_combined_phishing_evidence(text):
 ])
 def test_negation_bound_to_secret_solicitation_remains_prevention_advice(text):
     assert 'credential_request' not in [reason.code for reason in run(text).reasons]
+
+
+@pytest.mark.parametrize('text', [
+    'Your OTP, please send it to me now.',
+    'את הסיסמה שלך שלח לי עכשיו',
+    'Do not send the agenda, your OTP, please share it with me.',
+])
+def test_secret_before_action_remains_solicitation(text):
+    result = run(text)
+    assert result.assessment in ('suspicious', 'phishing')
+    assert 'credential_request' in [reason.code for reason in result.reasons]
+    assert 'do_not_share_secrets' in result.recommended_actions
+
+
+@pytest.mark.parametrize('text', [
+    'Your OTP, do not send it to anyone.',
+    'את הסיסמה שלך אל תשלח לאף אחד',
+    'Do not send your password, give me the meeting agenda.',
+])
+def test_fronted_and_separate_negated_objects_remain_prevention_advice(text):
+    assert 'credential_request' not in [reason.code for reason in run(text).reasons]

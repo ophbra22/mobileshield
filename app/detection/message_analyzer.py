@@ -42,7 +42,16 @@ def _positive_actions(prose: str, pattern: re.Pattern):
             previous_negated = negated
             end = actions[index + 1].start() if index + 1 < len(actions) else len(clause)
             if not negated:
-                yield action, clause[action.end():end]
+                # Objects can precede the action ("Your OTP, please send it").
+                # For later actions, a separator must detach a fronted object
+                # from the previous action, which may have been negated.
+                start = 0 if index == 0 else action.end()
+                if index:
+                    previous_end = actions[index - 1].end()
+                    separator = re.search(r'[,:]|\b(?:and|or)\b', clause[previous_end:action.start()], re.I)
+                    if separator:
+                        start = previous_end + separator.end()
+                yield action, clause[start:end]
 
 
 def _solicitation_codes(prose: str) -> set[str]:
