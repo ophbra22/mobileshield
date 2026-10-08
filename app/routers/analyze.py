@@ -35,6 +35,10 @@ def message(payload: MessageRequest, request: Request, transport: SafeTransport 
 
 @router.post('/v1/analyze')
 def legacy(payload: AnalyzeRequest, request: Request, transport: SafeTransport = Depends(get_scan_transport)):
+    # Old browser bundles mistake unfamiliar verdicts for benign. This is
+    # response-contract negotiation, not authentication or an Origin trust rule.
+    if 'origin' in request.headers and request.headers.getlist('x-mobileshield-response-version') != ['1']:
+        raise HTTPException(409, detail='client_upgrade_required')
     result = _analyze(MessageRequest(text=payload.url, inspect_links=payload.inspect_links), request, transport)
     return to_legacy_response(result, payload.url)
 

@@ -101,12 +101,13 @@ async def validation_error(request: Request, exc: RequestValidationError):
 async def http_error(request: Request, exc: StarletteHTTPException):
     # Even a library-raised HTTPException may carry private detail or headers.
     codes = {401: 'unauthorized', 403: 'forbidden', 404: 'not_found',
-             405: 'method_not_allowed', 410: 'scan_history_unavailable',
+             405: 'method_not_allowed', 409: 'client_upgrade_required', 410: 'scan_history_unavailable',
              413: 'body_too_large', 422: 'invalid_request',
              429: 'rate_limit_exceeded', 503: 'analysis_unavailable'}
     return JSONResponse(status_code=exc.status_code, content={
         'detail': codes.get(exc.status_code, 'request_failed'),
         'request_id': request.state.request_id,
+        **({'message': 'Refresh or update your client before trying again.'} if exc.status_code == 409 else {}),
     })
 
 
