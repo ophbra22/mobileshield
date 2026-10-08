@@ -51,6 +51,26 @@ BRAND_ALLOWLIST_DOMAINS: dict[str, set[str]] = {
     'pepper': {'pepper.co.il'},
 }
 
+# Product aliases share the official roots of their parent brand family.
+BRAND_FAMILIES = {
+    'appleid': 'apple', 'icloud': 'apple',
+    'office': 'microsoft', 'outlook': 'microsoft',
+}
+GENERIC_BRAND_TERMS = frozenset({'bank'})
+
+
+def official_domains_for_brand(brand: str) -> set[str]:
+    """Resolve a specific claim against the existing configured family roots."""
+    if brand in GENERIC_BRAND_TERMS:
+        return set()
+    family = BRAND_FAMILIES.get(brand, brand)
+    roots = {PROTECTED_BRANDS[family]} if family in PROTECTED_BRANDS else set()
+    for identifier, domains in BRAND_ALLOWLIST_DOMAINS.items():
+        if BRAND_FAMILIES.get(identifier, identifier) == family:
+            roots.update(domains)
+    return roots
+
+
 HOMOGLYPH_MAP = {
     '0': 'o',
     '1': 'l',
@@ -123,10 +143,10 @@ def detect_brand_impersonation(hostname: str, registered_domain: str) -> dict:
     """Detect brand keywords in hostname/subdomain that are not present/allowlisted on the registered domain."""
     hostname_l = hostname.lower()
     reg_l = registered_domain.lower() if registered_domain else ''
-    brands_found = [bk for bk in BRAND_KEYWORDS if bk in hostname_l]
+    brands_found = [bk for bk in BRAND_KEYWORDS if bk not in GENERIC_BRAND_TERMS and bk in hostname_l]
     suspicious_brands = []
     for brand in brands_found:
-        allowed = BRAND_ALLOWLIST_DOMAINS.get(brand, set()) | {PROTECTED_BRANDS.get(brand, '')}
+        allowed = official_domains_for_brand(brand)
         if not any(root and is_official_domain(reg_l, root) for root in allowed):
             suspicious_brands.append(brand)
     is_brand_in_subdomain = any(bk in split_domain(hostname_l).subdomain for bk in suspicious_brands)
@@ -196,7 +216,8 @@ def is_official_domain(domain: str, official: str | None = None) -> bool:
         official_domain = official.lower()
         return domain == official_domain or domain.endswith(f'.{official_domain}')
 
-    for official_domain in PROTECTED_BRANDS.values():
+    official_roots = set(PROTECTED_BRANDS.values()).union(*BRAND_ALLOWLIST_DOMAINS.values())
+    for official_domain in official_roots:
         if domain == official_domain or domain.endswith(f'.{official_domain}'):
             return True
     return False

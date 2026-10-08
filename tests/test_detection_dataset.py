@@ -34,6 +34,12 @@ DATASET = [
     ('https://support.microsoft.com', 'legitimate', _resolver_for()),
     ('https://facebook.com', 'legitimate', _resolver_for()),
     ('https://www.binance.com', 'legitimate', _resolver_for()),
+    # Recognized brand aliases and banking roots must retain their original identity.
+    ('https://outlook.com', 'legitimate', _resolver_for()),
+    ('https://office.com', 'legitimate', _resolver_for()),
+    ('https://icloud.com', 'legitimate', _resolver_for()),
+    ('https://bankhapoalim.co.il', 'legitimate', _resolver_for()),
+    ('https://discountbank.co.il', 'legitimate', _resolver_for()),
     # Marketing tracker redirect -> should stay legitimate
     ('https://w.ems.to/iRIA1SC', 'legitimate', _resolver_for(final_url='https://www.maniajeans.co.il')),
     # Suspicious

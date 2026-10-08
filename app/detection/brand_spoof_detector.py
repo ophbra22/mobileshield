@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from app.brand import (BRAND_ALLOWLIST_DOMAINS, PROTECTED_BRANDS, analyze_brand,
-                       detect_brand_impersonation, detect_typosquat, is_official_domain)
+from app.brand import (GENERIC_BRAND_TERMS, analyze_brand, detect_brand_impersonation,
+                       detect_typosquat, is_official_domain, official_domains_for_brand)
 from app.detection.config import DEFAULT_CONFIG
 from app.detection.models import BrandAnalysis, URLParts
 
@@ -10,7 +10,7 @@ def analyze_brand_signals(parts: URLParts, config=DEFAULT_CONFIG) -> BrandAnalys
     hostname = parts.hostname
     registrable = parts.registrable_domain
 
-    brand_keywords = [bk for bk in sorted(config.brand_keywords) if bk in hostname or bk in parts.path.lower()]
+    brand_keywords = [bk for bk in sorted(config.brand_keywords) if bk not in GENERIC_BRAND_TERMS and (bk in hostname or bk in parts.path.lower())]
     impersonation = detect_brand_impersonation(hostname, registrable)
     brand_in_subdomain = impersonation.get('is_brand_in_subdomain', False)
 
@@ -18,7 +18,7 @@ def analyze_brand_signals(parts: URLParts, config=DEFAULT_CONFIG) -> BrandAnalys
     typosquat_target, typosquat_distance, _ = detect_typosquat(registrable)
     unrelated_hits = []
     for keyword in brand_keywords:
-        official_roots = BRAND_ALLOWLIST_DOMAINS.get(keyword, set()) | {PROTECTED_BRANDS.get(keyword, '')}
+        official_roots = official_domains_for_brand(keyword)
         official_roots |= {root for root in config.trusted_roots if keyword in root.split('.')[0]}
         if not any(root and is_official_domain(registrable, root) for root in official_roots):
             unrelated_hits.append(keyword)

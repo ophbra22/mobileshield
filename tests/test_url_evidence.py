@@ -281,3 +281,55 @@ def test_invalid_candidate_and_raw_observation_errors_never_leak():
     failed = analyze(link, UrlObservation(limitations=['oops token=PRIVATE_SECRET']))
     assert failed.limitations == ['inspection_failed']
     assert 'PRIVATE_SECRET' not in failed.model_dump_json()
+
+
+OFFICIAL_BRAND_PAGES = [
+    ('outlook.com', 'Outlook Microsoft sign in'),
+    ('office.com', 'Microsoft Office sign in'),
+    ('icloud.com', 'Apple iCloud sign in'),
+    ('bankhapoalim.co.il', 'Bank Hapoalim sign in'),
+    ('discountbank.co.il', 'Discount Bank sign in'),
+]
+
+
+@pytest.mark.parametrize('host,title', OFFICIAL_BRAND_PAGES)
+def test_recognized_official_brand_alias_static_has_no_mismatch(host, title):
+    result = analyze(candidate('https://' + host), None)
+    assert result.assessment == 'unknown'
+    assert result.reasons == []
+    assert result.limitations == ['inspection_disabled']
+
+
+@pytest.mark.parametrize('host,title', OFFICIAL_BRAND_PAGES)
+def test_official_brand_title_and_password_are_not_impersonation(host, title):
+    link = candidate('https://' + host)
+    html = '<title>' + title + '</title><form><input type="password"></form>'
+    result = analyze(link, observed(link.canonical_url, html))
+    assert result.assessment == 'suspicious'
+    assert {r.code for r in result.reasons} == {'credential_form'}
+    assert result.inspection_status == 'completed'
+
+
+@pytest.mark.parametrize('host,title', OFFICIAL_BRAND_PAGES)
+def test_official_title_alone_has_no_brand_warning(host, title):
+    link = candidate('https://' + host)
+    result = analyze(link, observed(link.canonical_url, '<title>' + title + '</title>'))
+    assert result.assessment == 'no_clear_signs'
+    assert result.reasons == []
+
+
+@pytest.mark.parametrize('title', ['Bank account sign in', 'Online banking service'])
+def test_generic_banking_title_does_not_invent_a_brand_claim(title):
+    link = candidate('https://example.com')
+    result = analyze(link, observed(link.canonical_url, '<title>' + title + '</title>'))
+    assert result.assessment == 'no_clear_signs'
+    assert result.reasons == []
+
+
+@pytest.mark.parametrize('title', ['Outlook sign in', 'Office sign in', 'iCloud sign in', 'Hapoalim bank sign in'])
+def test_specific_brand_alias_title_on_unrelated_domain_still_warns(title):
+    link = candidate('https://example.com')
+    result = analyze(link, observed(link.canonical_url,
+        '<title>' + title + '</title><form><input type="password"></form>'))
+    assert result.assessment == 'phishing'
+    assert {'brand_destination_mismatch', 'credential_form'} <= {r.code for r in result.reasons}
