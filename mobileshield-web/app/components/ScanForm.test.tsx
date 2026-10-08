@@ -20,6 +20,20 @@ describe('message form with the real request lifecycle', () => {
     expect(screen.getByRole('checkbox',{name:'Inspect linked pages too'})).not.toBeChecked();
     expect(screen.queryByText(/AI|confidence|Safe Link/)).not.toBeInTheDocument();
   });
+  it.each(['en', 'he'])('explains server-visit tracking and one-time-link consequences in %s', (language) => {
+    localStorage.setItem('ms_lang', language); show();
+    const checkbox = screen.getByRole('checkbox');
+    const help = document.getElementById(checkbox.getAttribute('aria-describedby')!);
+    expect(help).toBeVisible();
+    expect(checkbox).not.toBeChecked();
+    if (language === 'en') {
+      expect(help).toHaveTextContent(/server visits/);
+      expect(help).toHaveTextContent(/activate tracking or a one-time link/);
+    } else {
+      expect(help).toHaveTextContent(/השרת מבקר/);
+      expect(help).toHaveTextContent(/להפעיל מעקב או קישור חד־פעמי/);
+    }
+  });
   it('reads clipboard only on request and preserves manual text on denial', async () => {
     const readText = vi.fn().mockRejectedValue(new Error('denied SECRET'));
     Object.defineProperty(navigator,'clipboard',{value:{readText},configurable:true});

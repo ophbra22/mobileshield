@@ -21,7 +21,7 @@ _OBJECT_SEPARATOR = re.compile(r'[,:]')
 # A recipient or subordinate adjunct can follow the object ("that to me",
 # "that when you arrive"); a bare adverb must end before another clause.
 _DEMONSTRATIVE_OBJECT_BOUNDARY = (
-    r'(?=\s*(?:$|[,:])|\s+(?:(?:back|over)\s+)?(?:to|with|for|from)\b|'
+    r'(?=\s*(?:$|[,:])|\s+(?:(?:back|over)\s+)?(?:to|with|for|from|by|via)\b|'
     r'\s+(?:when|once|because|if|unless|until|before|after)\b|'
     r'\s+(?:(?:right\s+)?now|please|back|over|here|there|again|today|tomorrow|later|[a-z]+ly)'
     r'\s*(?:$|[,:]))'
