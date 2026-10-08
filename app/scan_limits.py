@@ -145,10 +145,12 @@ class PrivateRequestMiddleware:
                     identity = str(client[0]) if client else '<unknown>'
                     if not scope['app'].state.scan_limiter.allow(identity):
                         return await reject(429, 'rate_limit_exceeded')
-                    admission = scope['app'].state.scan_work
-                    if not admission.acquire():
-                        return await reject(503, 'analysis_unavailable')
-                    work_admission = admission
+                # Every POST below is buffered, including redirects/unmatched
+                # routes, so every body reader must consume the same work cap.
+                admission = scope['app'].state.scan_work
+                if not admission.acquire():
+                    return await reject(503, 'analysis_unavailable')
+                work_admission = admission
                 # Count received bytes, not the declared Content-Length. Reject
                 # oversized declarations early as well, without reading the body.
                 for key, value in scope.get('headers', []):

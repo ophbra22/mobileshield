@@ -183,3 +183,34 @@ def test_static_completion_is_distinct_from_requested_inspection_failure():
                                   'Read https://example.com:8080', 'Read https://127.0.0.1'])
 def test_other_missing_or_blocked_checks_prevent_static_reassurance(text):
     assert run(text).assessment == 'unknown'
+
+
+@pytest.mark.parametrize('text', [
+    'Do not delay, send me your OTP now.',
+    'Never ignore this request: send me your password now.',
+    'אל תחכה, שלח לי את הסיסמה שלך עכשיו',
+    'Do not delay send me your OTP now.',
+    'Never ignore this request send me your password now.',
+    'אל תחכה שלח לי את הסיסמה שלך עכשיו',
+])
+def test_unrelated_negation_cannot_erase_secret_solicitation(text):
+    result = run(text)
+    assert result.assessment in ('suspicious', 'phishing')
+    assert 'credential_request' in [reason.code for reason in result.reasons]
+    assert 'do_not_share_secrets' in result.recommended_actions
+
+
+@pytest.mark.parametrize('text', [
+    'Do not delay, send me your password https://phishingsite.com.',
+    'אל תחכה, שלח לי את הסיסמה שלך https://phishingsite.com',
+])
+def test_unrelated_negation_preserves_combined_phishing_evidence(text):
+    assert run(text).assessment == 'phishing'
+
+
+@pytest.mark.parametrize('text', [
+    'Do not ever send your OTP.', 'Never share your password.',
+    'אל תשלח את הסיסמה שלך', 'אין למסור את קוד האימות שלך',
+])
+def test_negation_bound_to_secret_solicitation_remains_prevention_advice(text):
+    assert 'credential_request' not in [reason.code for reason in run(text).reasons]

@@ -10,7 +10,11 @@ from app.message_models import AssessmentSummary, LinkResult, ParsedMessage, Rea
 _REQUEST = re.compile(r"\b(?:send|share|give|enter|provide|confirm|submit|reply|pay|transfer|needs?)\b|(?<!\w)(?:שלח|שלחי|שתף|שתפי|מסור|מסרי|הזן|הזיני|שלמי|שלם|העבר|העבירי|אשר|אשרי|צריך|צריכה)(?!\w)", re.I)
 _SECRET = re.compile(r'\b(?:otp|password|passcode|pin|verification code|security code)\b|(?:סיסמ[אה]|קוד (?:ה)?אימות|קוד חד פעמי)', re.I)
 _PAYMENT = re.compile(r'\b(?:payment|money|fee|bank details|card details|credit card|card number|cvv)\b|(?:תשלום|כסף|פרטי אשראי|פרטי כרטיס|דמי משלוח|כרטיס האשראי)', re.I)
-_NEGATION = re.compile(r"\b(?:do not|don't|never|must not|should not|shouldn't|not to)\b|(?:אל ת|לא ל|אין ל)", re.I)
+_NEGATED_ACTION_PREFIX = re.compile(
+    r"(?:\b(?:do not|don't|never|must not|should not|shouldn't|not to)\s+"
+    r"(?:(?:ever|please)\s+)*|(?:אל|לא|אין)\s+)$", re.I,
+)
+_COORDINATED_ACTION = re.compile(r'\b(?:and|or)\s+$', re.I)
 _URGENCY = re.compile(r'\b(?:now|immediately|urgent(?:ly)?|within \d+ (?:minutes|hours))\b|(?:עכשיו|מיד|דחוף|בדחיפות)', re.I)
 _THREAT = re.compile(r'\b(?:account.{0,30}(?:suspend|close|block)|suspended|locked out)\b|(?:החשבון.{0,25}(?:ייסגר|יחסם|ייחסם))', re.I)
 _LOGIN = re.compile(r'\b(?:log[ -]?in|sign[ -]?in)\b|(?:היכנס|כניסה)', re.I)
@@ -25,19 +29,37 @@ def _prose(parsed: ParsedMessage) -> str:
     ))
 
 
+def _positive_actions(prose: str, pattern: re.Pattern):
+    """Associate negation with its action, not every request in the sentence."""
+    for clause in re.split(r'[.!?;\n]|\bbut\b|אבל', prose, flags=re.I):
+        actions = list(pattern.finditer(clause))
+        previous_negated = False
+        for index, action in enumerate(actions):
+            prefix = clause[:action.start()]
+            negated = bool(_NEGATED_ACTION_PREFIX.search(prefix))
+            if previous_negated and _COORDINATED_ACTION.search(prefix):
+                negated = True
+            previous_negated = negated
+            end = actions[index + 1].start() if index + 1 < len(actions) else len(clause)
+            if not negated:
+                yield action, clause[action.end():end]
+
+
+def _solicitation_codes(prose: str) -> set[str]:
+    codes = set()
+    for _, requested in _positive_actions(prose, _REQUEST):
+        if _SECRET.search(requested):
+            codes.add('credential_request')
+        if _PAYMENT.search(requested):
+            codes.add('payment_request')
+    return codes
+
+
 def text_evidence(parsed: ParsedMessage) -> list[Reason]:
     prose = _prose(parsed)
     reasons: list[Reason] = []
-    codes: set[str] = set()
-    # Negation is clause-local: safety advice cannot suppress a later request.
-    for clause in re.split(r'[.!?;\n]|\bbut\b|אבל', prose, flags=re.I):
-        if _NEGATION.search(clause) or not _REQUEST.search(clause):
-            continue
-        if _SECRET.search(clause):
-            codes.add('credential_request')
-        if _PAYMENT.search(clause):
-            codes.add('payment_request')
-    if _THREAT.search(prose) and _LOGIN.search(prose) and not _NEGATION.search(prose):
+    codes = _solicitation_codes(prose)
+    if _THREAT.search(prose) and any(_positive_actions(prose, _LOGIN)):
         codes.add('credential_request')
     for link in parsed.links:
         if any(c in link.raw for c in '\u202a\u202b\u202d\u202e\u2066\u2067\u2068') and _LOGIN.search(prose):
@@ -74,9 +96,7 @@ def assess_message(parsed: ParsedMessage, links: list[LinkResult]) -> Assessment
     # Urgency alone adds context, but a request plus an independent destination
     # warning (or an explicit threat tied to secret/payment solicitation) is
     # needed for phishing. Generic login under pressure remains suspicious.
-    direct_solicitation = any(_REQUEST.search(clause) and (_SECRET.search(clause) or _PAYMENT.search(clause))
-                              and not _NEGATION.search(clause)
-                              for clause in re.split(r'[.!?;\n]|\bbut\b|אבל', _prose(parsed), flags=re.I))
+    direct_solicitation = bool(_solicitation_codes(_prose(parsed)))
     contextual_risk = solicits and direct_solicitation and any(
         reason.code not in {'credential_request', 'payment_request'}
         and (reason.strength == 'strong' or (reason.source != 'message' and reason.strength == 'medium'))

@@ -93,7 +93,8 @@ def test_uvicorn_managed_logs_do_not_leak(client, caplog):
 
 
 @pytest.mark.parametrize('exit_mode', ['response', 'exception', 'disconnect', 'cancel'])
-def test_request_work_overflow_and_cleanup(exit_mode):
+@pytest.mark.parametrize('path', ['/v1/analyze-message', '/v1/analyze-message/', '/v1/analyze/', '/unmatched'])
+def test_request_work_overflow_and_cleanup(exit_mode, path):
     from types import SimpleNamespace
     from app.scan_limits import PrivateRequestMiddleware, ScanRateLimiter, RequestWorkAdmission
     admission = RequestWorkAdmission()
@@ -118,7 +119,7 @@ def test_request_work_overflow_and_cleanup(exit_mode):
     async def send(message):
         responses.append(message)
     def scope():
-        return {'type': 'http', 'method': 'POST', 'path': '/v1/analyze-message', 'headers': [],
+        return {'type': 'http', 'method': 'POST', 'path': path, 'headers': [],
                 'app': SimpleNamespace(state=state), 'client': ('synthetic', 123)}
     async def scenario():
         tasks = [asyncio.create_task(middleware(scope(), receive, send)) for _ in range(32)]
