@@ -21,6 +21,10 @@ MAX_INSPECTION_SECONDS = 20
 _INSPECTION_GUARD = threading.BoundedSemaphore(2)
 
 
+class InspectionBusy(Exception):
+    """Shared inspection capacity is exhausted; callers must not queue/retry."""
+
+
 @dataclass
 class UrlObservation:
     final_url: str | None = None
@@ -131,9 +135,10 @@ class SafeTransport:
         try:
             # Validate even when queue is full; never send unsafe URLs to DNS.
             target = canonical_target(url)
-            acquired = _INSPECTION_GUARD.acquire(timeout=_remaining(deadline, self._clock))
+            _remaining(deadline, self._clock)
+            acquired = _INSPECTION_GUARD.acquire(blocking=False)
             if not acquired:
-                raise TimeoutError('deadline_exceeded')
+                raise InspectionBusy()
             for redirect_count in range(MAX_REDIRECTS + 1):
                 _remaining(deadline, self._clock)
                 answers = self._resolver(target, deadline=deadline)
@@ -204,6 +209,8 @@ class SafeTransport:
                         response.close()
                     if connection is not None:
                         connection.close()
+        except InspectionBusy:
+            raise
         except DestinationBlocked:
             result.limitations.append('destination_blocked')
         except ssl.SSLCertVerificationError:

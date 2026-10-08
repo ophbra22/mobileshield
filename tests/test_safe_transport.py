@@ -166,7 +166,7 @@ def test_expired_deadline_does_not_connect():
     assert h.connection_attempts == []
 
 
-def test_process_wide_two_inspection_limit_and_queue_deadline():
+def test_process_wide_two_inspection_limit_and_immediate_refusal():
     entered = threading.Event()
     release = threading.Event()
     lock = threading.Lock()
@@ -187,13 +187,15 @@ def test_process_wide_two_inspection_limit_and_queue_deadline():
         assert entered.wait(1)
         third = Harness()
         started = time.monotonic()
-        result = third.inspect(deadline=started + .05)
-        assert result.limitations == ['deadline_exceeded']
+        with pytest.raises(transport.InspectionBusy):
+            third.inspect(deadline=started + 20)
         assert time.monotonic() - started < .3
         assert third.connection_attempts == []
+        assert third.resolved == []
         release.set()
         assert all(job.result().html for job in jobs)
     assert peak == 2
+    assert Harness().inspect().html  # refusal and completed work both release resources
 
 
 def test_pinned_socket_correct_sni_and_tls_verification(monkeypatch):

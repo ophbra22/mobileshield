@@ -227,9 +227,11 @@
     "id": "en-29",
     "language": "en",
     "text": "Here is a link https://שלום.com for discussion.",
-    "expected_assessment": "unknown",
+    "expected_assessment": "no_clear_signs",
     "expected_link_count": 1,
-    "expected_supported_text": true
+    "expected_supported_text": true,
+    "original_expected_assessment": "unknown",
+    "assessment_note": "Controller-approved Task 4 interpretation: supported prose and a valid Hebrew IDN use the same completed static-check scope as ordinary ASCII links; pages remain unvisited. Original label retained for baseline provenance."
   },
   {
     "id": "en-30",
@@ -467,9 +469,11 @@
     "id": "he-29",
     "language": "he",
     "text": "הקישור https://שלום.com מובא לדיון.",
-    "expected_assessment": "unknown",
+    "expected_assessment": "no_clear_signs",
     "expected_link_count": 1,
-    "expected_supported_text": true
+    "expected_supported_text": true,
+    "original_expected_assessment": "unknown",
+    "assessment_note": "Controller-approved Task 4 interpretation: supported prose and a valid Hebrew IDN use the same completed static-check scope as ordinary ASCII links; pages remain unvisited. Original label retained for baseline provenance."
   },
   {
     "id": "he-30",
