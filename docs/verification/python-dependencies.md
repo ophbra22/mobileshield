@@ -1,6 +1,6 @@
 # Python dependency remediation — 8 October 2026
 
-Task11 applies compatible fixes to `8b5176a2b214db8760d06e3c05cb649a6c74f504`. Status: implementation and local verification complete; independent patch and advisory-disposition review is required before acceptance. This is not a zero-vulnerability declaration or a production exploitation assessment.
+Task11 applies compatible fixes to `8b5176a2b214db8760d06e3c05cb649a6c74f504`. Status: implementation, local verification and fresh independent patch/advisory-disposition review are complete. The reviewer accepted this scope with no Critical/Important findings. Deployment checks remain separate. This is not a zero-vulnerability declaration or a production exploitation assessment.
 
 ## Final versions and concrete fix
 
@@ -48,7 +48,7 @@ Severities below are the archive's GitHub-reviewed package severities, not an ap
 
 The local pip/setuptools numbers are **not evidence of Render's deployed bootstrap versions**. Docker's floating base supplies its own unverified tools. Neither global tools, Docker, credentials nor security policy changed. Install logs and clean-environment tool versions remain separate from project runtime assertions.
 
-FastAPI 0.115.6's published metadata requires `starlette>=0.40.0,<0.42.0`; forcing 1.3.1 would violate the resolver. [FastAPI 0.133.0](https://fastapi.tiangolo.com/release-notes/#01330) first adds Starlette 1.0+ support. A planned coordinated FastAPI/Starlette upgrade should target a compatible maintained FastAPI plus Starlette at least 1.3.1 and revalidate middleware, exceptions, startup and contracts. It is not undertaken solely to reduce advisory counts. This review found no remaining Critical/High advisory precondition on the currently enabled application paths. That is a bounded source-based disposition awaiting independent review, not a waiver of package findings. Discovery of a remaining reachable Important/Critical issue blocks publication and requires a concrete additional remedy.
+FastAPI 0.115.6's published metadata requires `starlette>=0.40.0,<0.42.0`; forcing 1.3.1 would violate the resolver. [FastAPI 0.133.0](https://fastapi.tiangolo.com/release-notes/#01330) first adds Starlette 1.0+ support. A planned coordinated FastAPI/Starlette upgrade should target a compatible maintained FastAPI plus Starlette at least 1.3.1 and revalidate middleware, exceptions, startup and contracts. It is not undertaken solely to reduce advisory counts. This review found no remaining Critical/High advisory precondition on the currently enabled application paths. That is a bounded source-based disposition accepted by independent review, not a waiver of package findings. Discovery of a remaining reachable Important/Critical issue blocks publication and requires a concrete additional remedy.
 
 ## Offline comparison and validation
 
