@@ -235,3 +235,27 @@ def test_secret_before_action_remains_solicitation(text):
 ])
 def test_fronted_and_separate_negated_objects_remain_prevention_advice(text):
     assert 'credential_request' not in [reason.code for reason in run(text).reasons]
+
+
+@pytest.mark.parametrize('text', [
+    'Do not send your password or OTP, give me the meeting agenda.',
+    'Do not send your password, PIN, or OTP, give me the meeting agenda.',
+    'Do not send your password, PIN, or OTP, please give me the meeting agenda.',
+    'Do not send your password, the agenda, please give it to me.',
+    'Do not send your password, PIN, or OTP, give me the agenda because it is missing.',
+])
+def test_negated_secret_list_is_not_object_of_later_ordinary_request(text):
+    result = run(text)
+    assert result.assessment == 'no_clear_signs'
+    assert 'credential_request' not in [reason.code for reason in result.reasons]
+
+
+@pytest.mark.parametrize('text', [
+    'Do not send the agenda, your OTP send to me now.',
+    'Do not send the agenda, your OTP, please share it with me.',
+    'Do not send the agenda or notes, your password, give it to me now.',
+])
+def test_new_fronted_secret_after_negated_object_list_is_still_detected(text):
+    result = run(text)
+    assert result.assessment in ('suspicious', 'phishing')
+    assert 'credential_request' in [reason.code for reason in result.reasons]

@@ -15,6 +15,11 @@ _NEGATED_ACTION_PREFIX = re.compile(
     r"(?:(?:ever|please)\s+)*|(?:אל|לא|אין)\s+)$", re.I,
 )
 _COORDINATED_ACTION = re.compile(r'\b(?:and|or)\s+$', re.I)
+_OBJECT_SEPARATOR = re.compile(r'[,:]|\b(?:and|or)\b', re.I)
+_OBJECT_REFERENCE = re.compile(
+    r'^\s+(?:(?:me|us|him|her)\s+)?(?:it|them|this|that)\b'
+    r'|^\s+(?:(?:לי|לנו)\s+)?(?:אותו|אותה|אותם|אותן)(?!\w)', re.I,
+)
 _URGENCY = re.compile(r'\b(?:now|immediately|urgent(?:ly)?|within \d+ (?:minutes|hours))\b|(?:עכשיו|מיד|דחוף|בדחיפות)', re.I)
 _THREAT = re.compile(r'\b(?:account.{0,30}(?:suspend|close|block)|suspended|locked out)\b|(?:החשבון.{0,25}(?:ייסגר|יחסם|ייחסם))', re.I)
 _LOGIN = re.compile(r'\b(?:log[ -]?in|sign[ -]?in)\b|(?:היכנס|כניסה)', re.I)
@@ -42,15 +47,18 @@ def _positive_actions(prose: str, pattern: re.Pattern):
             previous_negated = negated
             end = actions[index + 1].start() if index + 1 < len(actions) else len(clause)
             if not negated:
-                # Objects can precede the action ("Your OTP, please send it").
-                # For later actions, a separator must detach a fronted object
-                # from the previous action, which may have been negated.
+                # Keep the complete prior object list attached to its action.
+                # Only material after the final separator can be a new fronted
+                # object. A pronoun directly governed by this action can refer
+                # back across a comma ("your OTP, please share it").
                 start = 0 if index == 0 else action.end()
                 if index:
                     previous_end = actions[index - 1].end()
-                    separator = re.search(r'[,:]|\b(?:and|or)\b', clause[previous_end:action.start()], re.I)
-                    if separator:
-                        start = previous_end + separator.end()
+                    separators = list(_OBJECT_SEPARATOR.finditer(clause, previous_end, action.start()))
+                    if separators:
+                        start = separators[-1].end()
+                        if _OBJECT_REFERENCE.match(clause[action.end():end]) and len(separators) > 1:
+                            start = separators[-2].end()
                 yield action, clause[start:end]
 
 
