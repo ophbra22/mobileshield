@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-import tldextract
+from app.detection.url_normalizer import split_domain
 
 PROTECTED_BRANDS = {
     'apple': 'apple.com',
@@ -111,7 +111,7 @@ def detect_typosquat(registered_domain: str) -> tuple[str | None, int | None, st
         + BRAND_KEYWORDS
     )
     best: tuple[str | None, int | None] = (None, None)
-    for target in targets:
+    for target in sorted(targets):
         dist = _levenshtein(candidate, target)
         if dist <= 2 and len(candidate) >= 6:
             if best[1] is None or dist < best[1]:
@@ -124,19 +124,18 @@ def detect_brand_impersonation(hostname: str, registered_domain: str) -> dict:
     hostname_l = hostname.lower()
     reg_l = registered_domain.lower() if registered_domain else ''
     brands_found = [bk for bk in BRAND_KEYWORDS if bk in hostname_l]
-    allowlisted = False
-    for b in brands_found:
-        allowed = BRAND_ALLOWLIST_DOMAINS.get(b, set())
-        if reg_l in allowed or any(reg_l.endswith('.' + a) for a in allowed):
-            allowlisted = True
-            break
-    is_brand_in_subdomain = bool(brands_found)
-    is_registered_domain_suspicious = any(bk in reg_l for bk in brands_found) is False
+    suspicious_brands = []
+    for brand in brands_found:
+        allowed = BRAND_ALLOWLIST_DOMAINS.get(brand, set()) | {PROTECTED_BRANDS.get(brand, '')}
+        if not any(root and is_official_domain(reg_l, root) for root in allowed):
+            suspicious_brands.append(brand)
+    is_brand_in_subdomain = any(bk in split_domain(hostname_l).subdomain for bk in suspicious_brands)
+    is_registered_domain_suspicious = bool(suspicious_brands)
     typosquat_target, distance, normalized_candidate = detect_typosquat(registered_domain)
     return {
         'brands_found': brands_found,
         'is_brand_in_subdomain': is_brand_in_subdomain,
-        'is_registered_domain_suspicious': is_registered_domain_suspicious and not allowlisted,
+        'is_registered_domain_suspicious': is_registered_domain_suspicious,
         'typosquat_target': typosquat_target,
         'typosquat_distance': distance,
         'normalized_candidate': normalized_candidate,
@@ -153,7 +152,7 @@ class BrandLookalike:
 
 
 def analyze_brand(domain: str) -> Optional[BrandLookalike]:
-    extracted = tldextract.extract(domain)
+    extracted = split_domain(domain)
     sld = extracted.domain or domain
     sld_norm = _normalize_token(sld)
 
@@ -168,7 +167,7 @@ def analyze_brand(domain: str) -> Optional[BrandLookalike]:
             method = 'levenshtein'
         else:
             # check homoglyph proximity: if normalized sld contains brand_norm
-            if brand_norm in sld_norm or sld_norm in brand_norm:
+            if brand_norm in sld_norm or (len(sld_norm) >= 4 and len(brand_norm) - len(sld_norm) <= 2 and sld_norm in brand_norm):
                 score = 25
                 method = 'homoglyph'
                 distance = min(distance, 1)
