@@ -64,7 +64,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers.setdefault('Referrer-Policy', 'no-referrer')
         response.headers.setdefault('X-Frame-Options', 'DENY')
         docs_paths = {'/docs', '/docs/', '/redoc', '/openapi.json', '/docs/oauth2-redirect'}
-        if request.url.path in docs_paths:
+        # Match the router's ASGI path: malformed Host values can poison the
+        # path reconstructed by older Starlette versions in request.url.
+        if request.scope['path'] in docs_paths:
             # Relaxed CSP for Swagger UI assets from jsdelivr
             csp = (
                 "default-src 'self'; "

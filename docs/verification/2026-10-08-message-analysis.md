@@ -1,6 +1,13 @@
 # Message analysis verification — 8 October 2026
 
-Status: Task9 scoped review accepted with no Critical/Important findings. Task10's two observed UI corrections pass all 123 frontend tests, typecheck, lint and production build. Task8 dependency gate was accepted with zero audit findings at that check. Fresh Task10 review, controller browser recapture/environment acceptance and release prerequisites remain. Publication is conditionally approved but not performed here.
+Status: Task9 scoped review accepted with no Critical/Important findings. Task10's two observed UI corrections pass all 123 frontend tests, typecheck, lint and production build. Task8 dependency gate was accepted with zero audit findings at that check. Task11 Python remediation is implemented and awaits independent review; controller environment acceptance and release prerequisites remain. See the Task11 section and Python advisory dispositions below. Publication is conditionally approved but not performed here.
+
+## Task 11 — compatible Python fixes and advisory dispositions
+
+Requests is now 2.33.0 and python-jose is 3.5.0; all other final installed versions remain unchanged. The initial jose 3.4.0 target forced vulnerable pyasn1 0.4.8, so verified same-major 3.5.0 was required to retain patched pyasn1 0.6.4 through the normal resolver. CSP policy selection now uses the actual ASGI path, with malformed-Host regressions. Backend: 631 passed (610 prior + 21 new); explicit integration/rollout: 76 passed; pip check passed. A clean temporary environment reproduced all 48 versions and passed all 631 tests. Requests' compatibility warning is resolved; Starlette/Passlib deprecations remain.
+
+[Python dependency evidence and all remaining advisory dispositions](python-dependencies.md) document the offline archive, aliases, withdrawn duplicate, precise API reachability and maintenance paths. Final Python comparison still has 29 advisory records in 15 alias groups; package presence is not proof of exploitation, and npm's earlier zero count does not apply to Python. The concrete CSP exposure is corrected; residual crypto/framework/test/bootstrap risks have bounded dispositions awaiting **fresh independent review**. No framework/provider migration, auth enablement, credentials, permission changes, publication or frontend rebuild occurred. Current release status remains pending Task11 acceptance and controller-owned release prerequisites.
+
 
 ## Task 10 — displayed reasons and blank-input direction
 
