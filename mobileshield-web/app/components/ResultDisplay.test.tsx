@@ -195,3 +195,65 @@ describe('validated evidence presentation', () => {
     expect(screen.queryByText('future_code')).not.toBeInTheDocument();
   });
 });
+
+it.each(['en', 'he'] as const)('distinguishes text coverage from unavailable service in %s', language => {
+  localStorage.setItem('ms_lang', language);
+  const s = state('unknown', 'unavailable');
+  if (s.status !== 'result') throw Error('fixture');
+  s.result.limitations = ['unsupported_text'];
+  s.result.links = [];
+  s.result.reasons = [];
+  s.result.recommended_actions = [];
+  show(s);
+  const title = language === 'en' ? 'Limited text coverage' : 'כיסוי טקסט מוגבל';
+  expect(screen.getByRole('heading', { name: title })).toBeVisible();
+  expect(screen.getByRole('status')).toHaveTextContent(title);
+  expect(screen.queryByText(getTranslations(language).unavailable)).not.toBeInTheDocument();
+  expect(screen.queryByText(getTranslations(language).unavailableHelp)).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: getTranslations(language).retry })).not.toBeInTheDocument();
+  expect(document.documentElement.dir).toBe(language === 'he' ? 'rtl' : 'ltr');
+});
+
+it.each(['en', 'he'] as const)('shows a completed ordinary message in %s', language => {
+  localStorage.setItem('ms_lang', language);
+  const s = state('no_clear_signs', 'complete');
+  if (s.status !== 'result') throw Error('fixture');
+  s.result.limitations = [];
+  s.result.links = [];
+  s.result.reasons = [];
+  s.result.recommended_actions = [];
+  show(s);
+  const t = getTranslations(language);
+  expect(screen.getByRole('heading', { name: t.assessments.no_clear_signs })).toBeVisible();
+  expect(screen.getByText(t.complete)).toBeVisible();
+  expect(screen.getByText(t.noGuarantee)).toBeVisible();
+  expect(screen.getByText(t.noLinks)).toBeVisible();
+});
+
+it.each(['en', 'he'] as const)('preserves unavailable analysis with multiple limitations in %s', language => {
+  localStorage.setItem('ms_lang', language);
+  const s = state('unknown', 'unavailable');
+  if (s.status !== 'result') throw Error('fixture');
+  s.result.limitations = ['unsupported_text', 'inspection_failed'];
+  show(s);
+  const t = getTranslations(language);
+  expect(screen.getByRole('heading', { name: t.assessments.unknown })).toBeVisible();
+  expect(screen.getByText(t.unavailable)).toBeVisible();
+  expect(screen.getByText(t.unavailableHelp)).toBeVisible();
+});
+
+it.each(['en', 'he'] as const)('preserves partial warning and network error copy in %s', language => {
+  localStorage.setItem('ms_lang', language);
+  const s = state('suspicious', 'partial');
+  if (s.status !== 'result') throw Error('fixture');
+  s.result.limitations = ['unsupported_text', 'inspection_disabled'];
+  const view = render(<LanguageProvider><ResultDisplay state={s} onCancel={vi.fn()} onRetry={vi.fn()} /></LanguageProvider>);
+  const t = getTranslations(language);
+  expect(screen.getByRole('heading', { name: t.assessments.suspicious })).toBeVisible();
+  expect(screen.getByText(t.partialHelp)).toBeVisible();
+  expect(screen.getByText(t.reasons.credential_request)).toBeVisible();
+  view.rerender(<LanguageProvider><ResultDisplay state={{ sequenceId: 2, status: 'error', submittedText: 'private', inspectLinks: false, result: null, error: new AnalysisError('network_error') }} onCancel={vi.fn()} onRetry={vi.fn()} /></LanguageProvider>);
+  expect(screen.getByRole('heading', { name: t.errorTitle })).toBeVisible();
+  expect(screen.getByText(t.errors.network_error)).toBeVisible();
+  expect(screen.getByRole('button', { name: t.retry })).toBeVisible();
+});

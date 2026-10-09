@@ -12,6 +12,7 @@ import idna
 from app.detection.url_normalizer import split_domain
 from app.detection.network_policy import validate_raw_authority
 from app.message_models import LinkCandidate, MAX_LINKS, ParsedMessage, validate_message_text
+from app.text_coverage import supported_text
 
 # Match complete explicit candidates before bare domains; do not discover a
 # different host inside an unsupported scheme or an email address.
@@ -87,47 +88,6 @@ def _canonicalize(raw: str) -> tuple[str | None, str | None, str | None]:
         return None, None, 'invalid_url'
 
 
-# A deliberately bounded coverage vocabulary, hand-curated from ordinary English
-# function words and the product's greetings, scheduling and account-security
-# domain. This is NOT language identification or a dictionary of all English.
-# Unknown names/words cause false uncertainty rather than false reassurance.
-# Do not add corpus IDs, infer coverage from warning labels, or let Hebrew mask
-# unknown Latin prose. Parsed URLs and email addresses are not prose evidence.
-_ENGLISH_COVERAGE_WORDS = frozenset("""
-a an the i you he she it we they them me us him her my your his our their its
-this that these those and or but if when once because unless until before after
-of to from for with without by via in on at as is are was were be been being
-have has had do does did not no never don't must should shouldn't can cannot
-will would could may might please hello hi thanks thank thankyou goodbye yes
-see meet meeting agenda report missing notes note notebook bring read documentation help
-friend email mail sent send share give enter provide confirm submit reply pay
-transfer need needs password passwords otp otps pin pins passcode passcodes verification security
-code codes payment money fee bank details card credit number cvv account
-login log sign out suspended suspend close closed block blocked locked secure
-prize delivery official link links website page visit follow verify check review
-explain look what here there discussion anyone everyone someone understand
-acknowledge know tell say explain warning advice secret secrets understand
-now immediately urgent urgently within minutes hours today tomorrow later noon
-ten walk starts start morning evening back over again ever also right securely
-quickly carefully soon already still only all any some each other then so than
-understands arrive book receipt lunch appointment hello world test ordinary
-""".split())
-
-
-def _supported_text(text: str) -> bool:
-    prose = re.sub(r"[\w.+-]+@[\w.-]+", ' ', text)
-    words = re.findall(r"[^\W\d_]+(?:'[^\W\d_]+)?", unicodedata.normalize('NFC', prose), re.UNICODE)
-    if not words:
-        return False
-    for word in words:
-        letters = [c for c in word if unicodedata.category(c).startswith('L')]
-        if all('HEBREW' in unicodedata.name(c, '') for c in letters):
-            continue
-        if word.casefold() not in _ENGLISH_COVERAGE_WORDS:
-            return False
-    return True
-
-
 def parse_message(text: str) -> ParsedMessage:
     """Preserve all original text; no destination I/O or spoof classification."""
     validate_message_text(text)
@@ -164,5 +124,5 @@ def parse_message(text: str) -> ParsedMessage:
     prose_parts.append(text[last_end:])
     return ParsedMessage(
         text=text, normalized_text=normalized, links=links,
-        supported_text=_supported_text(''.join(prose_parts)),
+        supported_text=supported_text(' '.join(prose_parts)),
     )
