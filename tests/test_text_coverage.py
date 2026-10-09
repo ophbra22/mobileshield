@@ -166,3 +166,102 @@ def test_short_fragments_cannot_collectively_hide_substantial_unsupported_text(t
 
 def test_a_short_heading_and_name_can_use_substantial_context():
     assert parse_message('Reminder! Juniper. We will bring your notebook tomorrow.').supported_text
+
+# Review I1: inspect repetition before dropping greetings, across punctuation,
+# and even when a separate warning provides independent actionable evidence.
+REPEATED_PROSE = [
+    'hello thanks goodbye ' * 20,
+    'the and for ' * 20,
+    'אני אתה הוא ' * 20,
+    'Hello! Thanks, goodbye. ' * 4,
+    'אני; אתה! הוא? ' * 4,
+    'we will bring the plates tomorrow ' * 3,
+    'we will bring the plates and cups tomorrow while you collect our bowls from your cupboard again ' * 3,
+    'hello thanks goodbye ' * 476 + 'hi! ',
+]
+
+
+@pytest.mark.parametrize('text', REPEATED_PROSE)
+def test_multiword_cycles_are_uncertain_before_greeting_removal(text):
+    assert not parse_message(text).supported_text
+    result = run(text)
+    assert (result.assessment, result.analysis_status) == ('unknown', 'unavailable')
+    assert result.limitations == ['unsupported_text']
+
+
+def test_repeated_greeting_boundary_is_exactly_ten_thousand_codepoints():
+    assert len(REPEATED_PROSE[-1]) == 10_000
+
+
+@pytest.mark.parametrize('text', REPEATED_PROSE[:-1])
+def test_repeated_prose_keeps_warning_but_not_complete_coverage(text):
+    transport = Mock()
+    result = run(text + ' Send me your password now.', transport=transport)
+    assert result.assessment == 'suspicious'
+    assert result.analysis_status == 'partial'
+    assert {'credential_request', 'urgency'} <= {reason.code for reason in result.reasons}
+    assert 'unsupported_text' in result.limitations
+    transport.inspect.assert_not_called()
+
+
+@pytest.mark.parametrize('text', [
+    'We will bring plates, we will bring cups, and we will bring napkins.',
+    'Our compost improves our garden, and our mulch protects our seedlings.',
+    'אני אביא צלחות, אתה תביא כוסות, והוא יביא מפיות.',
+])
+def test_repeated_grammatical_frames_with_different_content_are_ordinary(text):
+    assert parse_message(text).supported_text
+
+
+# Review I2 plus independent expansions in different everyday domains.
+ORDINARY_EXPANSIONS = [
+    ('Our neighbors adopted kittens.', 'Our neighbors adopted two kittens.'),
+    ('My brother plays basketball.', 'My brother plays professional basketball.'),
+    ('The children enjoyed swimming.', 'The children enjoyed building sandcastles.'),
+    ('Our neighbors adopted two kittens.', 'Our cheerful neighbors adopted two playful kittens.'),
+    ('My brother plays professional basketball.', 'My younger brother enthusiastically plays professional basketball.'),
+    ('The children enjoyed building sandcastles.', 'The happy children enjoyed building elaborate sandcastles.'),
+    ('Her students practise calligraphy.', 'Her enthusiastic students practise decorative copperplate calligraphy.'),
+    ('Their grandmother repairs clocks.', 'Their grandmother expertly repairs delicate antique clocks.'),
+    ('Please bring some cookies.', 'Please bring some freshly baked chocolate chip cookies.'),
+    ('We packed the mugs.', 'We packed the delicate hand painted ceramic coffee mugs.'),
+]
+
+
+@pytest.mark.parametrize('original,expanded', ORDINARY_EXPANSIONS)
+def test_ordinary_modifier_expansions_retain_coverage(original, expanded):
+    for text in (original, expanded):
+        assert parse_message(text).supported_text
+        result = run(text)
+        assert (result.assessment, result.analysis_status) == ('no_clear_signs', 'complete')
+        assert 'unsupported_text' not in result.limitations
+
+
+@pytest.mark.parametrize('text', [
+    'Our neighbors adopted kittens. Veuillez transmettre vos identifiants.',
+    'Please bring some cookies. Senden Sie mir Ihre Unterlagen morgen früh.',
+    'My brother plays professional basketball. פלרק זנדר קטרפ',
+    'We will meet tomorrow veuillez transmettre vos identifiants et documents personnels',
+])
+def test_expansion_tolerance_does_not_cover_unsupported_passages(text):
+    assert not parse_message(text).supported_text
+
+
+def test_review_regressions_through_asgi_and_client_parser(client):
+    values = []
+    for text, assessment, status in [
+        (ORDINARY_EXPANSIONS[0][1], 'no_clear_signs', 'complete'),
+        (ORDINARY_EXPANSIONS[8][1], 'no_clear_signs', 'complete'),
+        (REPEATED_PROSE[0], 'unknown', 'unavailable'),
+        (REPEATED_PROSE[2], 'unknown', 'unavailable'),
+        (REPEATED_PROSE[-1], 'unknown', 'unavailable'),
+        (REPEATED_PROSE[0] + 'Send me your password now.', 'suspicious', 'partial'),
+    ]:
+        response = client.post('/v1/analyze-message', json={'text': text, 'inspect_links': False})
+        assert response.status_code == 200
+        result = response.json()
+        assert (result['assessment'], result['analysis_status']) == (assessment, status)
+        assert ('unsupported_text' in result['limitations']) is (status != 'complete')
+        values.append(result)
+    client.transport_spy.inspect.assert_not_called()
+    frontend_roundtrip(values)

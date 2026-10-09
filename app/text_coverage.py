@@ -20,6 +20,9 @@ as is are was were be been being have has had do does did not no never must
 should can cannot will would could may might please here there now then today
 tomorrow yesterday also still only all any some each other than so
 """.split())
+# These existing anchors can introduce a noun phrase containing several
+# modifiers. Classifying their grammatical role adds no content-word lexicon.
+_NOMINAL = frozenset('a an the my your his her our their its this that these those all any some each'.split())
 _HE = frozenset("""
 אני אתה את הוא היא אנחנו אתם אתן הם הן לי לך לו לה לנו לכם לכן להם להן
 של שלי שלך שלו שלה שלנו שלכם שלהן שלהם את זה זו זאת אלה אלו עם על אל
@@ -71,9 +74,9 @@ def _anchor(word: str, script: str) -> str | None:
     return None
 
 
-def _bounded_spans(evidence: list[str | None]) -> bool:
+def _bounded_spans(evidence: list[str | None], tail_limit: int = 4) -> bool:
     positions = [index for index, item in enumerate(evidence) if item]
-    return (bool(positions) and positions[0] <= 4 and len(evidence) - 1 - positions[-1] <= 4
+    return (bool(positions) and positions[0] <= 4 and len(evidence) - 1 - positions[-1] <= tail_limit
             and all(right - left - 1 <= 8 for left, right in zip(positions, positions[1:])))
 
 
@@ -83,11 +86,14 @@ def _covered(words: list[str], script: str) -> bool:
     anchors = [_anchor(word, script) for word in words]
     present = [anchor for anchor in anchors if anchor]
     count = len(words)
-    # At least one anchor per six tokens and two anchor occurrences beyond four
-    # words. Edge spans allow four content words. An internal noun phrase may
-    # span eight, but needs structural evidence at BOTH ends. This keeps a
-    # supported introduction from covering a substantial unanchored tail.
-    if present and len(present) * 6 >= count and len(present) >= (2 if count > 4 else 1) and _bounded_spans(anchors):
+    # Density alone sets the evidence minimum, avoiding a second-anchor cliff
+    # at word five. English allows one marker per eight tokens, Hebrew per six.
+    # A nominal marker can introduce up to eight content words (modifiers,
+    # subject/predicate or object phrase). Other tails keep the four-word bound:
+    # an introduction ending in "tomorrow" cannot cover a foreign passage.
+    tail_limit = 8 if script == 'en' and present and present[-1] in _NOMINAL else 4
+    token_budget = 8 if script == 'en' else 6
+    if present and len(present) * token_budget >= count and _bounded_spans(anchors, tail_limit):
         return True
     if script == 'he':
         # Attached Hebrew prepositions/articles/conjunctions are weak evidence.
@@ -98,6 +104,33 @@ def _covered(words: list[str], script: str) -> bool:
                     for word, anchor in zip(words, anchors)]
         present = [item for item in evidence if item]
         return len(present) * 2 >= count and len(set(present)) >= 2 and _bounded_spans(evidence)
+    return False
+
+
+def _repetitive(words: list[str]) -> bool:
+    """Linear bounded work before greeting removal; punctuation is irrelevant."""
+    count = len(words)
+    if count >= 6 and (len(set(words)) <= 2 or Counter(words).most_common(1)[0][1] * 5 >= count * 3):
+        return True
+    # Three consecutive copies of a 1–16-token unit, occupying at least six
+    # tokens, anywhere in the message. A warning suffix must not hide a cycle.
+    for period in range(1, min(16, count // 3) + 1):
+        matched = 0
+        for index in range(period, count):
+            matched = matched + 1 if words[index] == words[index - period] else 0
+            if matched >= 2 * period and matched + period >= 6:
+                return True
+    # Also catch longer repeated passages without an unbounded period search.
+    # Any prefix with at least nine tokens, 60% duplicate trigrams and a
+    # trigram occurring three times is degenerate. Once observed, appending a
+    # warning cannot erase it. Different content keeps ordinary frames varied.
+    trigrams: Counter[tuple[str, str, str]] = Counter()
+    most_common = 0
+    for total, trigram in enumerate(zip(words, words[1:], words[2:]), start=1):
+        trigrams[trigram] += 1
+        most_common = max(most_common, trigrams[trigram])
+        if total >= 7 and (total - len(trigrams)) * 5 >= total * 3 and most_common >= 3:
+            return True
     return False
 
 
@@ -127,7 +160,7 @@ def supported_text(text: str) -> bool:
             segments.append((current_script, current))
     if not all_words:
         return False
-    if len(all_words) >= 6 and (len(set(all_words)) <= 2 or Counter(all_words).most_common(1)[0][1] * 5 >= len(all_words) * 3):
+    if _repetitive(all_words):
         return False
     substantial = False
     unresolved_short = 0
