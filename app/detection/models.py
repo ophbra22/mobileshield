@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 SignalLevel = Literal['strong', 'medium', 'low', 'info']
 Confidence = Literal['low', 'medium', 'high']
-ClassificationStatus = Literal['legitimate', 'suspicious', 'phishing']
+ClassificationStatus = Literal['legitimate', 'suspicious', 'phishing', 'unknown']
 
 
 @dataclass
@@ -29,7 +29,7 @@ class TechnicalDetails:
     certificate_issuer: Optional[str]
     certificate_valid_from: Optional[str]
     certificate_valid_to: Optional[str]
-    hostname_match: bool
+    hostname_match: Optional[bool]
 
 
 @dataclass
@@ -130,7 +130,7 @@ class CertificateAnalysis:
     valid_from: Optional[str]
     valid_to: Optional[str]
     valid_now: Optional[bool]
-    hostname_matches: bool
+    hostname_matches: Optional[bool]
     error: Optional[str] = None
 
 
@@ -138,9 +138,9 @@ class CertificateAnalysis:
 class ContentAnalysis:
     fetched: bool
     content_type: Optional[str]
-    has_form: bool
-    credential_form: bool
-    payment_form: bool
+    has_form: Optional[bool]
+    credential_form: Optional[bool]
+    payment_form: Optional[bool]
     brand_claim: Optional[str]
     outbound_domains: List[str]
     outbound_count: int

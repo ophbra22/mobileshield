@@ -15,8 +15,8 @@ export const SettingsDrawer = ({ open, onClose, initialApiBase }: Props) => {
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md h-full bg-slate-950 border-l border-slate-800 p-6 space-y-4">
+    <div className="fixed inset-0 z-40 flex justify-end bg-black/50 backdrop-blur-xs">
+      <div className="w-full max-w-md h-full bg-slate-950 border-l border-slate-800 p-6 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <p className="text-lg text-white font-bold">הגדרות</p>
           <button onClick={onClose} className="text-slate-400 text-sm">
@@ -43,7 +43,7 @@ export const SettingsDrawer = ({ open, onClose, initialApiBase }: Props) => {
             localStorage.setItem('api_base', apiBase || '');
             onClose();
           }}
-          className="w-full py-3 rounded-2xl bg-gradient-to-l from-emerald-400 to-cyan-400 text-slate-900 font-semibold"
+          className="w-full py-3 rounded-2xl bg-linear-to-l/srgb from-emerald-400 to-cyan-400 text-slate-900 font-semibold"
         >
           שמירה
         </button>

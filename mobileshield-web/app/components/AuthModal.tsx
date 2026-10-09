@@ -39,8 +39,8 @@ export const AuthModal = ({ onClose, onRegisteredApiKey }: Props) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-slate-800 p-6 space-y-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 flex items-center justify-center px-4">
+      <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-slate-800 p-6 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <p className="text-lg text-white font-bold">{mode === 'login' ? 'כניסה' : 'הרשמה'}</p>
           <button onClick={onClose} className="text-slate-400 text-sm">סגור</button>
@@ -82,7 +82,7 @@ export const AuthModal = ({ onClose, onRegisteredApiKey }: Props) => {
         <button
           onClick={submit}
           disabled={loading}
-          className="w-full py-3 rounded-2xl bg-gradient-to-l from-emerald-400 to-cyan-400 text-slate-900 font-semibold disabled:opacity-60"
+          className="w-full py-3 rounded-2xl bg-linear-to-l/srgb from-emerald-400 to-cyan-400 text-slate-900 font-semibold disabled:opacity-60"
         >
           {loading ? 'טוען...' : mode === 'login' ? 'כניסה' : 'הרשמה'}
         </button>

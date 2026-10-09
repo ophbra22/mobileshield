@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-import tldextract
+from app.detection.url_normalizer import split_domain
 
 PROTECTED_BRANDS = {
     'apple': 'apple.com',
@@ -50,6 +50,26 @@ BRAND_ALLOWLIST_DOMAINS: dict[str, set[str]] = {
     'beinleumi': {'bankisrael.co.il', 'bnpparibas.com'},
     'pepper': {'pepper.co.il'},
 }
+
+# Product aliases share the official roots of their parent brand family.
+BRAND_FAMILIES = {
+    'appleid': 'apple', 'icloud': 'apple',
+    'office': 'microsoft', 'outlook': 'microsoft',
+}
+GENERIC_BRAND_TERMS = frozenset({'bank'})
+
+
+def official_domains_for_brand(brand: str) -> set[str]:
+    """Resolve a specific claim against the existing configured family roots."""
+    if brand in GENERIC_BRAND_TERMS:
+        return set()
+    family = BRAND_FAMILIES.get(brand, brand)
+    roots = {PROTECTED_BRANDS[family]} if family in PROTECTED_BRANDS else set()
+    for identifier, domains in BRAND_ALLOWLIST_DOMAINS.items():
+        if BRAND_FAMILIES.get(identifier, identifier) == family:
+            roots.update(domains)
+    return roots
+
 
 HOMOGLYPH_MAP = {
     '0': 'o',
@@ -111,7 +131,7 @@ def detect_typosquat(registered_domain: str) -> tuple[str | None, int | None, st
         + BRAND_KEYWORDS
     )
     best: tuple[str | None, int | None] = (None, None)
-    for target in targets:
+    for target in sorted(targets):
         dist = _levenshtein(candidate, target)
         if dist <= 2 and len(candidate) >= 6:
             if best[1] is None or dist < best[1]:
@@ -123,20 +143,19 @@ def detect_brand_impersonation(hostname: str, registered_domain: str) -> dict:
     """Detect brand keywords in hostname/subdomain that are not present/allowlisted on the registered domain."""
     hostname_l = hostname.lower()
     reg_l = registered_domain.lower() if registered_domain else ''
-    brands_found = [bk for bk in BRAND_KEYWORDS if bk in hostname_l]
-    allowlisted = False
-    for b in brands_found:
-        allowed = BRAND_ALLOWLIST_DOMAINS.get(b, set())
-        if reg_l in allowed or any(reg_l.endswith('.' + a) for a in allowed):
-            allowlisted = True
-            break
-    is_brand_in_subdomain = bool(brands_found)
-    is_registered_domain_suspicious = any(bk in reg_l for bk in brands_found) is False
+    brands_found = [bk for bk in BRAND_KEYWORDS if bk not in GENERIC_BRAND_TERMS and bk in hostname_l]
+    suspicious_brands = []
+    for brand in brands_found:
+        allowed = official_domains_for_brand(brand)
+        if not any(root and is_official_domain(reg_l, root) for root in allowed):
+            suspicious_brands.append(brand)
+    is_brand_in_subdomain = any(bk in split_domain(hostname_l).subdomain for bk in suspicious_brands)
+    is_registered_domain_suspicious = bool(suspicious_brands)
     typosquat_target, distance, normalized_candidate = detect_typosquat(registered_domain)
     return {
         'brands_found': brands_found,
         'is_brand_in_subdomain': is_brand_in_subdomain,
-        'is_registered_domain_suspicious': is_registered_domain_suspicious and not allowlisted,
+        'is_registered_domain_suspicious': is_registered_domain_suspicious,
         'typosquat_target': typosquat_target,
         'typosquat_distance': distance,
         'normalized_candidate': normalized_candidate,
@@ -153,7 +172,7 @@ class BrandLookalike:
 
 
 def analyze_brand(domain: str) -> Optional[BrandLookalike]:
-    extracted = tldextract.extract(domain)
+    extracted = split_domain(domain)
     sld = extracted.domain or domain
     sld_norm = _normalize_token(sld)
 
@@ -168,7 +187,7 @@ def analyze_brand(domain: str) -> Optional[BrandLookalike]:
             method = 'levenshtein'
         else:
             # check homoglyph proximity: if normalized sld contains brand_norm
-            if brand_norm in sld_norm or sld_norm in brand_norm:
+            if brand_norm in sld_norm or (len(sld_norm) >= 4 and len(brand_norm) - len(sld_norm) <= 2 and sld_norm in brand_norm):
                 score = 25
                 method = 'homoglyph'
                 distance = min(distance, 1)
@@ -197,7 +216,8 @@ def is_official_domain(domain: str, official: str | None = None) -> bool:
         official_domain = official.lower()
         return domain == official_domain or domain.endswith(f'.{official_domain}')
 
-    for official_domain in PROTECTED_BRANDS.values():
+    official_roots = set(PROTECTED_BRANDS.values()).union(*BRAND_ALLOWLIST_DOMAINS.values())
+    for official_domain in official_roots:
         if domain == official_domain or domain.endswith(f'.{official_domain}'):
             return True
     return False

@@ -44,7 +44,7 @@ export function ApiKeyCard({ value, remember, onChange, onToggleRemember, onSave
             onSave(value.trim(), remember);
             setSaved(true);
           }}
-          className="px-5 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-slate-900 font-semibold shadow-card disabled:opacity-50"
+          className="px-5 py-3 rounded-xl bg-linear-to-r/srgb from-blue-500 to-cyan-400 text-slate-900 font-semibold shadow-card disabled:opacity-50"
           disabled={!value.trim()}
         >
           Save key

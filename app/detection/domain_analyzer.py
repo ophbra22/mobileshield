@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import ipaddress
-from urllib.parse import unquote
 
-import tldextract
+from app.detection.url_normalizer import split_domain
 
 from app.detection.config import DEFAULT_CONFIG
 from app.detection.models import DomainAnalysis, URLParts
@@ -23,10 +22,10 @@ def _has_encoded(text: str) -> bool:
 
 def analyze_domain(parts: URLParts, raw_url: str, config=DEFAULT_CONFIG) -> DomainAnalysis:
     hostname = parts.hostname
-    extracted = tldextract.extract(hostname)
+    extracted = split_domain(hostname)
     tld = extracted.suffix.lower()
     subdomain_depth = len(extracted.subdomain.split('.')) if extracted.subdomain else 0
-    hyphen_count = hostname.count('-')
+    hyphen_count = hostname.replace('xn--', '').count('-')
     path_lower = parts.path.lower()
     query_lower = parts.query.lower()
     hostname_lower = hostname.lower()
@@ -41,7 +40,7 @@ def analyze_domain(parts: URLParts, raw_url: str, config=DEFAULT_CONFIG) -> Doma
     has_punycode = 'xn--' in hostname
     excessive_subdomains = subdomain_depth >= 4
     suspicious_tld = tld in config.suspicious_tlds
-    obfuscated = encoded_chars or has_at or has_punycode
+    obfuscated = encoded_chars or has_at
     hostname_length = len(hostname)
 
     trusted = _is_trusted(hostname, config.trusted_roots)

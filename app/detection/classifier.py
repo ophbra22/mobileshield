@@ -32,3 +32,14 @@ def classify(score: ScoreResult, config: DetectionConfig = DEFAULT_CONFIG) -> tu
         confidence = 'low'
 
     return status, confidence
+
+
+def classify_evidence(reasons, *, inspection_complete: bool):
+    """Positive evidence survives unavailable checks and trusted-domain hints."""
+    strong = {reason.code for reason in reasons if reason.strength == 'strong'}
+    warning = any(reason.strength in {'medium', 'strong'} for reason in reasons)
+    if len(strong) >= 2:
+        return 'phishing'
+    if warning:
+        return 'suspicious'
+    return 'no_clear_signs' if inspection_complete else 'unknown'

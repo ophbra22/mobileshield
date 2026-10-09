@@ -65,9 +65,9 @@ export default function KeysPage() {
   };
 
   return (
-    <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
+    <main className="max-w-4xl mx-auto px-4 py-6 flex flex-col gap-4">
       <h1 className="text-2xl text-white font-bold">המפתחות שלי</h1>
-      <div className="rounded-3xl bg-slate-900/60 border border-slate-800 p-5 space-y-3">
+      <div className="rounded-3xl bg-slate-900/60 border border-slate-800 p-5 flex flex-col gap-3">
         <div className="flex gap-2 items-center">
           <input
             value={name}
@@ -76,7 +76,7 @@ export default function KeysPage() {
           />
           <button
             onClick={createKey}
-            className="px-4 py-2 rounded-full bg-gradient-to-l from-emerald-400 to-cyan-400 text-slate-900 font-semibold"
+            className="px-4 py-2 rounded-full bg-linear-to-l/srgb from-emerald-400 to-cyan-400 text-slate-900 font-semibold"
           >
             יצירת מפתח
           </button>
@@ -87,7 +87,7 @@ export default function KeysPage() {
           </div>
         )}
         {error && <p className="text-rose-400 text-sm">{error}</p>}
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {keys.map((k) => (
             <div key={k.id} className="flex items-center justify-between px-3 py-2 rounded-2xl bg-slate-800/70 border border-slate-700">
               <div className="text-slate-200 text-sm">

@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,7 +11,7 @@ class Settings(BaseSettings):
     database_url: str = 'postgresql+psycopg2://mobileshield:mobileshield@db:5432/mobileshield'
     admin_token: str | None = None
     enable_admin: bool = False
-    rate_limit_per_minute: int = 60
+    rate_limit_per_minute: int = Field(default=60, ge=1)
     cors_origins: str = 'http://localhost:3000,http://127.0.0.1:3000'
     admin_allow_ips: str | None = None
     env: str = 'dev'  # dev or prod

@@ -7,6 +7,21 @@ import tldextract
 from app.detection.models import URLParts
 
 
+_DOMAIN_EXTRACTOR = tldextract.TLDExtract(
+    suffix_list_urls=(), cache_dir=None, include_psl_private_domains=True,
+)
+
+
+def split_domain(host: str) -> tldextract.ExtractResult:
+    """Use the bundled public/private suffix snapshot without network or disk I/O."""
+    return _DOMAIN_EXTRACTOR(host)
+
+
+def extract_domain(host: str) -> str:
+    extracted = split_domain(host)
+    return extracted.registered_domain or host
+
+
 def normalize_url(raw_url: str) -> URLParts:
     candidate = raw_url.strip()
     if '://' not in candidate:
@@ -27,7 +42,7 @@ def normalize_url(raw_url: str) -> URLParts:
     normalized = parsed._replace(scheme=scheme, netloc=netloc, path=path, params='', fragment='')
     normalized_url = urlunparse(normalized)
 
-    extracted = tldextract.extract(hostname)
+    extracted = split_domain(hostname)
     registrable = extracted.registered_domain or hostname
     subdomain = extracted.subdomain
     tld = extracted.suffix

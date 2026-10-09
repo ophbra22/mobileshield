@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import tldextract
+from urllib.parse import urlsplit
+from app.detection.url_normalizer import extract_domain
 
 from app.detection.config import DEFAULT_CONFIG, DetectionConfig
 from app.detection.models import (
@@ -91,19 +92,21 @@ def score_risk(
     add_if(domain.long_path or domain.long_query, 'long_path_query', 'Unusually long path or query string.')
     add_if(bool(domain.phishing_keywords), 'phishing_keyword', 'Phishing lure keyword present in path/query.')
     add_if(bool(domain.lure_keywords), 'lure_keyword', 'Lure/urgency wording present.')
-    add_if(domain.has_punycode, 'punycode', 'IDN/punycode detected which can hide lookalikes.')
     add_if(domain.obfuscated, 'obfuscated_chars', 'Encoded or obfuscated characters detected in URL.')
     add_if(domain.has_at, 'at_symbol', '@ symbol appears before path.')
     add_if(parts.scheme == 'http', 'http_scheme', 'Uses HTTP instead of HTTPS.')
 
     # Redirects (small risk per requirements)
-    final_host = tldextract.extract(redirect.final_url).registered_domain or redirect.final_url
+    final_host = extract_domain(urlsplit(redirect.final_url).hostname or '')
     domain_changed = redirect.domain_changed or (final_host and final_host != parts.registrable_domain)
     add_if(redirect.redirect_hops > 0, 'redirect_chain', 'Redirect present.')
     add_if(redirect.redirect_hops > 5, 'redirect_chain_long', 'Redirect chain is very long (>5).')
     add_if(domain_changed, 'redirect_domain_change', 'Redirect chain ends on a different domain.')
     add_if(redirect.used_shortener, 'shortener', 'Known URL shortener used.')
     add_if(redirect.used_shortener and (redirect.final_status is None or redirect.error), 'shortener_unresolved', 'Shortened URL failed to resolve cleanly.')
+
+    add_if(reputation.signals.get('local_blocklist_hit'), 'local_blocklist_hit',
+           'Domain matches the limited local blocklist (not verified external intelligence).')
 
     # Domain reputation
     if reputation.domain_age_days is not None:
@@ -112,12 +115,12 @@ def score_risk(
     add_if(bool(reputation.signals.get('dns_nxdomain')), 'nxdomain', 'Domain does not resolve (NXDOMAIN).')
 
     # Brand impersonation / lookalike
-    add_if(brand.impersonates_brand and not domain.trusted, 'brand_impersonation', 'Brand keyword appears on unrelated domain.')
-    add_if(bool(brand.lookalike_score) and not domain.trusted, 'lookalike', 'Domain resembles a protected brand.')
+    add_if(brand.impersonates_brand, 'brand_impersonation', 'Brand keyword appears on unrelated domain.')
+    add_if(bool(brand.lookalike_score), 'lookalike', 'Domain resembles a protected brand.')
     add_if(brand.brand_in_subdomain and _is_public_hosting(parts.registrable_domain), 'public_hosting_brand', 'Brand cues on public hosting platform.')
 
     # Content
-    add_if(content.credential_form and not domain.trusted, 'credential_form_untrusted', 'Page contains a credential form on an untrusted domain.')
+    add_if(content.credential_form and not domain.trusted, 'credential_form_untrusted', 'Page contains credential fields on an untrusted domain.')
     add_if(content.payment_form and not domain.trusted, 'payment_form', 'Page requests payment details on an untrusted domain.')
     if content.brand_claim and brand.brand and brand.brand not in (parts.registrable_domain or ''):
         add_if(True, 'content_brand_mismatch', 'Page content references a brand that differs from the domain.')
@@ -125,16 +128,17 @@ def score_risk(
 
     # TLS / certificate
     add_if(tls.hostname_matches is False, 'cert_mismatch', 'TLS certificate does not match the hostname.')
-    add_if(tls.valid_now is False or tls.error, 'cert_invalid', 'TLS certificate is invalid or expired.')
+    add_if(tls.valid_now is False or tls.error == 'certificate_mismatch', 'cert_invalid', 'TLS certificate verification failed.')
 
     # Server indicators (avoid double-counting IP literal)
     add_if(server.is_private and not domain.trusted and not domain.is_ip_literal, 'ip_literal', 'Resolved IP is private/reserved.')
 
     # Marketing tracker discount: initial domain is tracker and final domain benign-ish
-    initial_reg = tldextract.extract(redirect.chain[0].url).registered_domain if redirect.chain else None
+    initial_reg = extract_domain(urlsplit(redirect.chain[0].url).hostname or '') if redirect.chain else None
     tracker_hit = initial_reg in config.marketing_tracker_domains if initial_reg else False
     final_benignish = (
-        not domain.suspicious_tld
+        content.fetched
+        and not domain.suspicious_tld
         and not brand.impersonates_brand
         and not content.credential_form
         and not content.payment_form
@@ -142,24 +146,12 @@ def score_risk(
     if tracker_hit and final_benignish:
         add_if(True, 'marketing_tracker_discount', 'Redirect uses a known marketing tracker to a normal destination.')
 
-    # Benign final destination discount
-    if (
-        parts.scheme == 'https'
-        and tls.valid_now is not False
-        and tls.hostname_matches is not False
-        and not tls.error
-        and not brand.impersonates_brand
-        and not content.credential_form
-        and not content.payment_form
-        and not domain.is_ip_literal
-    ):
-        add_if(True, 'benign_final_destination', 'Final destination is HTTPS with valid/ok cert and no spoof indicators.')
-
-    # Allowlist discount (applied once and only if no strong evidence)
-    if domain.trusted and not brand.impersonates_brand and not redirect.used_shortener:
+    # A trusted root is a bounded hint, and never cancels strong evidence.
+    if domain.trusted and not result.strong and not redirect.used_shortener:
         weight = weights.get('allowlist_discount')
         if weight:
-            result.add(ScoreComponent(key='allowlist_discount', points=weight.points, level=weight.level, reason=weight.description))
+            result.add(ScoreComponent(key='allowlist_discount', points=max(weight.points, -10),
+                                      level=weight.level, reason=weight.description))
 
     result.total = max(0, min(result.total, 100))
     return result
