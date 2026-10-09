@@ -23,6 +23,12 @@ function maskedDestination(value: string | null): string | null {
   }
 }
 
+function hasOnlyTextLimitation(state: MessageAnalysisState) {
+  return state.status === 'result' && state.result.assessment === 'unknown'
+    && state.result.analysis_status === 'unavailable'
+    && state.result.limitations.length === 1 && state.result.limitations[0] === 'unsupported_text';
+}
+
 function ResultContent({ state, onCancel, onRetry }: Props) {
   const { t } = useLanguage();
   const reasonCopy = (code: string) => t.reasons[code as keyof typeof t.reasons] ?? t.reasons.unknown_reason;
@@ -51,6 +57,7 @@ function ResultContent({ state, onCancel, onRetry }: Props) {
   );
   if (state.status !== 'result') return null;
   const result = state.result;
+  const limitedText = hasOnlyTextLimitation(state);
   const Icon = { phishing: ShieldAlert, suspicious: AlertCircle, no_clear_signs: Search, unknown: HelpCircle }[result.assessment];
   return (
     <section className={`card result-card assessment-${result.assessment}`} aria-labelledby="assessment-title">
@@ -58,11 +65,11 @@ function ResultContent({ state, onCancel, onRetry }: Props) {
         <span className="assessment-icon"><Icon size={25} aria-hidden="true" /></span>
         <div>
           <p className="eyebrow">{t.resultLabel}</p>
-          <h2 id="assessment-title">{t.assessments[result.assessment]}</h2>
+          <h2 id="assessment-title">{limitedText ? t.limitedTextTitle : t.assessments[result.assessment]}</h2>
         </div>
       </div>
       <p className="muted result-context">{t.resultContext}</p>
-      <p>{t.descriptions[result.assessment]}</p>
+      <p>{limitedText ? t.limitedTextHelp : t.descriptions[result.assessment]}</p>
       {result.assessment === 'no_clear_signs' && <p className="no-guarantee">{t.noGuarantee}</p>}
       {result.recommended_actions.length > 0 && (
         <div className="action-card">
@@ -78,9 +85,9 @@ function ResultContent({ state, onCancel, onRetry }: Props) {
       </div>
       <div className="coverage-block">
         <h3>{t.coverageTitle}</h3>
-        <p className="coverage-status">{t[result.analysis_status]}</p>
+        <p className="coverage-status">{limitedText ? t.limitedTextTitle : t[result.analysis_status]}</p>
         {result.analysis_status === 'partial' && <p>{t.partialHelp}</p>}
-        {result.analysis_status === 'unavailable' && <p>{t.unavailableHelp}</p>}
+        {result.analysis_status === 'unavailable' && !limitedText && <p>{t.unavailableHelp}</p>}
         {result.limitations.length > 0 && (
           <ul className="evidence-list">
             {result.limitations.map((code, index) => <li key={`${code}-${index}`}>{reasonCopy(code)}</li>)}
@@ -138,7 +145,7 @@ export function ResultDisplay(props: Props) {
   const { state } = props;
   const announcement = state.status === 'loading' ? t.checking
     : state.status === 'error' ? t.errorTitle
-    : state.status === 'result' ? `${t.resultLabel}: ${t.assessments[state.result.assessment]}` : '';
+    : state.status === 'result' ? `${t.resultLabel}: ${hasOnlyTextLimitation(state) ? t.limitedTextTitle : t.assessments[state.result.assessment]}` : '';
   return (
     <>
       <p className="sr-only" role="status" aria-atomic="true">{announcement}</p>
