@@ -8,7 +8,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 [![CI](https://github.com/ophbra22/mobileshield/actions/workflows/ci.yml/badge.svg)](https://github.com/ophbra22/mobileshield/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-965%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-979%20passing-2ea44f)
 
 <p align="center">
   <img src="docs/images/home-he.png" alt="MobileShield home screen in Hebrew" width="42%">
@@ -106,7 +106,7 @@ DATABASE_URL=sqlite:// uvicorn tests.fixture_server:app --port 8000
 ```
 
 **Frontend:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS 4, bilingual RTL/LTR UI with an accessibility focus
-- **Testing:** pytest (835 hermetic tests that make no network or DNS calls), Vitest + Testing Library (130 tests), Ruff
+- **Testing:** pytest (849 hermetic tests that make no network or DNS calls), Vitest + Testing Library (130 tests), Ruff
 - **Infrastructure:** Docker, Docker Compose, GitHub Actions (tests, lint, type checks, build and dependency audits)
 
 ## Getting started
