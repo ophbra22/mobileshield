@@ -1,8 +1,9 @@
 import pytest
 
-from app.analysis import analyze_url
+from app.analysis import analyze_message
 from app.detection.models import CertificateAnalysis, RedirectHop
 from app.detection.safe_transport import UrlObservation
+from app.message_models import MessageRequest
 
 
 def _resolver_for(final_url: str | None = None):
@@ -39,12 +40,14 @@ DATASET = [
     ('https://office.com', 'legitimate', _resolver_for()),
     ('https://icloud.com', 'legitimate', _resolver_for()),
     ('https://bankhapoalim.co.il', 'legitimate', _resolver_for()),
+    ('https://www.mizrahi-tefahot.co.il', 'legitimate', _resolver_for()),
+    ('https://www.fibi.co.il', 'legitimate', _resolver_for()),
     ('https://discountbank.co.il', 'legitimate', _resolver_for()),
     # Marketing tracker redirect -> should stay legitimate
     ('https://w.ems.to/iRIA1SC', 'legitimate', _resolver_for(final_url='https://www.maniajeans.co.il')),
-    # Suspicious
-    ('http://t.ly/abc', 'suspicious', _resolver_for(final_url='https://apple.com')),
-    # No invented brand match or RDAP age; the remaining 22 points are below the warning threshold.
+    # A shortener is judged by where it lands, not by being a shortener.
+    ('http://t.ly/abc', 'legitimate', _resolver_for(final_url='https://apple.com')),
+    # No invented brand match from an unfamiliar name.
     ('https://tracking.newbrand.click/u/123', 'legitimate', _resolver_for()),
     ('https://neutral-redirect.xyz/login', 'suspicious', _resolver_for()),
     # Phishing
@@ -58,31 +61,34 @@ DATASET = [
 ]
 
 
-class DummySession:
-    """Minimal stub for SQLAlchemy session in tests."""
+ASSESSMENT = {'legitimate': 'no_clear_signs', 'suspicious': 'suspicious', 'phishing': 'phishing', 'unknown': 'unknown'}
 
-    def __getattr__(self, name):
-        def _noop(*args, **kwargs):
-            return None
 
-        return _noop
+class _Transport:
+    """Serves synthetic observations; private destinations never reach it."""
+
+    def __init__(self, resolver):
+        self._resolver = resolver
+        self.calls = []
+
+    def inspect(self, url, *, deadline):
+        self.calls.append(url)
+        return self._resolver(url, deadline=deadline)
 
 
 @pytest.mark.parametrize('url,expected,resolver', DATASET)
 def test_detection_dataset(url, expected, resolver):
-    res = analyze_url(url, DummySession(), resolver=resolver)
-    assert res.status == expected
-    assert 0 <= res.risk_score <= 100
-    if expected not in {'legitimate', 'unknown'}:
-        assert res.reasons, f"Expected reasons for {url}"
-        assert res.confidence in {'medium', 'high', 'low'}
-    if expected == 'phishing':
-        assert res.risk_score >= 60
+    """Labelled URLs through the production message pipeline with link inspection."""
+    transport = _Transport(resolver)
+    result = analyze_message(MessageRequest(text=url, inspect_links=True), request_id='dataset', transport=transport)
+    assert result.assessment == ASSESSMENT[expected]
+    if expected in {'suspicious', 'phishing'}:
+        assert result.reasons, f'Expected reasons for {url}'
     if expected == 'legitimate':
-        assert res.risk_score <= 25
-
+        assert result.analysis_status == 'complete'
+        assert result.reasons == []
     if expected == 'unknown':
-        assert res.signals['inspection_status'] == 'blocked'
-        assert res.signals['limitations'] == ['destination_blocked']
-        assert res.signals['content']['credential_form'] is None
-        assert res.risk_score == 0
+        link = result.links[0]
+        assert link.inspection_status == 'blocked'
+        assert link.limitations == ['destination_blocked']
+        assert transport.calls == []

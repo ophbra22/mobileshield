@@ -9,9 +9,9 @@ from urllib.parse import quote, urlsplit, urlunsplit
 
 import idna
 
-from app.detection.url_normalizer import split_domain
 from app.detection.network_policy import validate_raw_authority
-from app.message_models import LinkCandidate, MAX_LINKS, ParsedMessage, validate_message_text
+from app.detection.url_normalizer import split_domain
+from app.message_models import MAX_LINKS, LinkCandidate, ParsedMessage, validate_message_text
 from app.text_coverage import supported_text
 
 # Match complete explicit candidates before bare domains; do not discover a

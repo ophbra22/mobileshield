@@ -7,7 +7,6 @@ import pytest
 
 from app.detection.content_analyzer import analyze_content
 from app.detection.safe_transport import UrlObservation
-from tests.test_message_api import client
 from tests.test_safe_transport import Harness, Response
 from tests.test_scan_integration import frontend_roundtrip
 
@@ -235,8 +234,8 @@ def test_body_deadline_expires_all_work_slots_and_is_private(monkeypatch, caplog
 ])
 def test_legacy_adapter_keeps_documented_alias_and_canonical_assessment(client, monkeypatch, assessment, status, expected):
     import app.routers.analyze as router
-    from app.main import app
     from app.db.deps import get_db
+    from app.main import app
     from app.message_models import MessageResponse
     app.dependency_overrides[get_db] = lambda: pytest.fail('Legacy scan accessed database')
     monkeypatch.setattr(router, 'analyze_message', lambda *a, **k: MessageResponse(
@@ -251,19 +250,17 @@ def test_legacy_adapter_keeps_documented_alias_and_canonical_assessment(client, 
     assert response.headers['cache-control'] == 'no-store'
 
 
-def test_legacy_redirect_keeps_initial_blocklist_explanation_and_score():
-    from app.detection.engine import run_detection
+def test_redirect_through_blocklisted_hop_keeps_its_evidence():
+    from app.detection.engine import analyze_url_candidate
     from app.detection.models import RedirectHop
-    from tests.test_url_evidence import observed
+    from tests.test_url_evidence import candidate, observed
     observation = observed('https://google.com/', hops=[
         RedirectHop('https://evil.com/', 302, '8.8.8.8', 'ipv4'),
         RedirectHop('https://google.com/', 200, '8.8.8.8', 'ipv4'),
     ])
-    result = run_detection('https://evil.com/', object(), resolver=lambda *a, **k: observation)
-    assert result.status == 'suspicious'
-    assert any('local blocklist' in reason.lower() for reason in result.reasons)
-    assert result.score > 0
-    assert 'local_blocklist_hit' in {c['key'] for c in result.breakdown}
+    result = analyze_url_candidate(candidate('https://evil.com/'), observation)
+    assert result.assessment == 'suspicious'
+    assert 'local_blocklist_hit' in {reason.code for reason in result.reasons}
 
 
 def test_successful_real_legacy_inspection_maps_only_legacy_fields(client):

@@ -7,52 +7,38 @@ from sqlalchemy.orm import Session
 
 from app.db.deps import get_db, user_from_bearer
 from app.db.models import ApiKey, ApiKeyUsage, RateLimitWindow, User
-from app.settings import get_settings
 from app.security import constant_time_compare, hash_api_key
-
+from app.settings import get_settings
 
 settings = get_settings()
 
 
 def _enforce_rate_limit(db: Session, api_key: ApiKey) -> None:
+    """Per-key fixed one-minute window stored in the database."""
     window_start = datetime.now(UTC).replace(second=0, microsecond=0)
-
+    query = (select(ApiKeyUsage)
+             .where(ApiKeyUsage.api_key_id == api_key.id, ApiKeyUsage.window_start == window_start)
+             .with_for_update())
     try:
-        usage = db.execute(
-            select(ApiKeyUsage)
-            .where(ApiKeyUsage.api_key_id == api_key.id, ApiKeyUsage.window_start == window_start)
-            .with_for_update()
-        ).scalar_one_or_none()
-
+        usage = db.execute(query).scalar_one_or_none()
         if usage is None:
             usage = ApiKeyUsage(api_key_id=api_key.id, window_start=window_start, count=1)
             db.add(usage)
             db.flush()
         else:
             usage.count += 1
-
-        if usage.count > settings.rate_limit_per_minute:
-            db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail='Rate limit exceeded for this API key. Please retry next minute.',
-            )
-        db.commit()
     except IntegrityError:
+        # A concurrent request created this window first; count against it.
         db.rollback()
-        usage = db.execute(
-            select(ApiKeyUsage)
-            .where(ApiKeyUsage.api_key_id == api_key.id, ApiKeyUsage.window_start == window_start)
-            .with_for_update()
-        ).scalar_one()
+        usage = db.execute(query).scalar_one()
         usage.count += 1
-        if usage.count > settings.rate_limit_per_minute:
-            db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail='Rate limit exceeded for this API key. Please retry next minute.',
-            )
-        db.commit()
+    if usage.count > settings.rate_limit_per_minute:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail='Rate limit exceeded for this API key. Please retry next minute.',
+        )
+    db.commit()
 
 
 def require_api_key(x_api_key: str | None = Header(default=None, alias='X-API-Key'), db: Session = Depends(get_db)) -> ApiKey:

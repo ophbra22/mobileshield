@@ -94,13 +94,6 @@ BRANDS: dict[str, Brand] = {
 GENERIC_BRAND_TERMS = frozenset({'bank'})
 KNOWN_BRAND_IDS = frozenset(BRANDS) | GENERIC_BRAND_TERMS
 
-# Compatibility views used by the legacy scorer and look-alike detection.
-PROTECTED_BRANDS = {
-    'apple': 'apple.com', 'google': 'google.com', 'microsoft': 'microsoft.com',
-    'paypal': 'paypal.com', 'whatsapp': 'whatsapp.com', 'telegram': 'telegram.org',
-}
-BRAND_KEYWORDS = sorted(BRANDS)
-
 # Hostname tokens that make an ambiguous brand token suspicious, and suffixes or
 # prefixes commonly glued to a brand name ("paypalsecure", "myleumi").
 _RISK_TOKENS = frozenset({
@@ -277,19 +270,6 @@ def analyze_brand(domain: str) -> Optional[BrandLookalike]:
     return None
 
 
-def detect_typosquat(registered_domain: str) -> tuple[str | None, int | None, str]:
-    """Report-only nearest brand name (distance <= 2) for the registrable label."""
-    candidate = (registered_domain or '').split('.')[0].lower()
-    best: tuple[str | None, int | None] = (None, None)
-    if len(candidate) < 6:
-        return None, None, candidate
-    for target in sorted(_LOOKALIKE_TARGETS.values()):
-        dist = _levenshtein(candidate, target)
-        if dist <= 2 and (best[1] is None or dist < best[1]):
-            best = (target, dist)
-    return best[0], best[1], candidate
-
-
 def detect_brand_impersonation(hostname: str, registered_domain: str) -> dict:
     """Brand tokens in a hostname whose registrable domain is not the brand's."""
     hostname_l = hostname.lower()
@@ -297,12 +277,8 @@ def detect_brand_impersonation(hostname: str, registered_domain: str) -> dict:
     suspicious_brands = [brand for brand in brands_found if not _owned_by(hostname_l, brand)]
     subdomain_tokens = [t for t in re.split(r'[^a-z]+', split_domain(hostname_l).subdomain) if t]
     is_brand_in_subdomain = any(_tokens_name_brand(subdomain_tokens, BRANDS[b]) for b in suspicious_brands)
-    typosquat_target, distance, normalized_candidate = detect_typosquat(registered_domain)
     return {
         'brands_found': brands_found,
         'is_brand_in_subdomain': is_brand_in_subdomain,
         'is_registered_domain_suspicious': bool(suspicious_brands),
-        'typosquat_target': typosquat_target,
-        'typosquat_distance': distance,
-        'normalized_candidate': normalized_candidate,
     }

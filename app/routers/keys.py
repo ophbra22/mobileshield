@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.deps import get_db, get_current_user
+from app.db.deps import get_current_user, get_db
 from app.db.models import ApiKey, User
 from app.security import generate_api_key, hash_api_key
 

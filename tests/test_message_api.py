@@ -1,23 +1,6 @@
 """Real ASGI boundary tests; no database or destination network required."""
-from unittest.mock import Mock
 
 import pytest
-from fastapi.testclient import TestClient
-
-
-@pytest.fixture
-def client(monkeypatch):
-    import app.main as main
-    from app.routers.analyze import get_scan_transport
-    from app.scan_limits import ScanRateLimiter
-    monkeypatch.setattr(main, 'initialize_database', lambda: None)
-    main.app.state.scan_limiter = ScanRateLimiter(limit=60)
-    transport = Mock()
-    main.app.dependency_overrides[get_scan_transport] = lambda: transport
-    with TestClient(main.app, raise_server_exceptions=False) as client:
-        client.transport_spy = transport
-        yield client
-    main.app.dependency_overrides.clear()
 
 
 def test_new_and_legacy_routes_share_stateless_default(client):
@@ -87,8 +70,8 @@ def test_too_many_links_is_422(client):
 
 def test_exhausted_shared_slots_return_503_without_network(client):
     from app.detection import safe_transport
-    from app.routers.analyze import get_scan_transport
     from app.main import app
+    from app.routers.analyze import get_scan_transport
     app.dependency_overrides[get_scan_transport] = lambda: safe_transport.SafeTransport()
     assert safe_transport._INSPECTION_GUARD.acquire(blocking=False)
     assert safe_transport._INSPECTION_GUARD.acquire(blocking=False)
@@ -102,8 +85,9 @@ def test_exhausted_shared_slots_return_503_without_network(client):
 
 
 def test_http_exception_detail_and_headers_are_sanitized(client, monkeypatch, caplog):
-    import app.routers.analyze as router
     from fastapi import HTTPException
+
+    import app.routers.analyze as router
     def fail(*args, **kwargs):
         raise HTTPException(503, detail='PRIVATE_SENTINEL', headers={'X-Private': 'PRIVATE_SENTINEL'})
     monkeypatch.setattr(router, 'analyze_message', fail)

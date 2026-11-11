@@ -7,8 +7,9 @@ import unicodedata
 from typing import Literal
 
 import idna
-from app.brand import KNOWN_BRAND_IDS as KNOWN_BRANDS
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
+
+from app.brand import KNOWN_BRAND_IDS as KNOWN_BRANDS
 
 MAX_TEXT_CODEPOINTS = 10_000
 MAX_LINKS = 10

@@ -1,18 +1,22 @@
 """One bounded HTTP/TLS destination inspector; no cookies, proxies or subresources."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import http.client
 import ipaddress
 import socket
 import ssl
 import threading
 import time
+from dataclasses import dataclass, field
 from urllib.parse import urljoin
 
 from app.detection.models import CertificateAnalysis, RedirectHop
 from app.detection.network_policy import (
-    DestinationBlocked, ambiguous_url_text, canonical_target, public_address, resolve_public,
+    DestinationBlocked,
+    ambiguous_url_text,
+    canonical_target,
+    public_address,
+    resolve_public,
 )
 
 MAX_BODY_BYTES = 256 * 1024

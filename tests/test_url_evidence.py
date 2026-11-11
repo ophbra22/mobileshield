@@ -1,7 +1,7 @@
-from pathlib import Path
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -139,21 +139,23 @@ socket.getaddrinfo = socket.create_connection = deny
 socket.socket.connect = socket.socket.connect_ex = socket.socket.sendto = deny
 import requests
 requests.sessions.Session.request = deny
-from app.detection.engine import run_detection
+from app.analysis import analyze_message
+from app.message_models import MessageRequest
 from app.detection.domain_analyzer import analyze_domain
 from app.detection.url_normalizer import normalize_url
 from app.brand import analyze_brand
-from app.reputation import get_allowlist
 analyze_domain(normalize_url('https://example.com'), 'https://example.com')
 analyze_brand('example.com')
-get_allowlist()
+class NoTransport:
+    def inspect(self, *a, **k):
+        raise AssertionError('static analysis must not inspect')
+analyze_message(MessageRequest(text='hello https://example.com'), request_id='x', transport=NoTransport())
 for thread in threading.enumerate():
     if thread is not threading.current_thread():
         thread.join(timeout=1)
 assert not attempts, attempts
 '''
-    env = {**os.environ, 'ALLOWLIST_ENABLED': 'true',
-           'ALLOWLIST_SOURCES': 'https://allowlist.example/list', 'ALLOWLIST_CACHE_PATH': ''}
+    env = dict(os.environ)
     result = subprocess.run([sys.executable, '-c', script], env=env, capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr
 
@@ -192,47 +194,44 @@ def test_partial_html_retains_unknown_for_unseen_forms():
     assert content.payment_form is None
 
 
-def test_legacy_private_input_never_reaches_injected_transport():
-    from app.detection.engine import run_detection
-    def forbidden(*args, **kwargs):
-        pytest.fail('private input reached transport')
-    result = run_detection('http://192.168.1.10/login', object(), resolver=forbidden)
-    assert result.status == 'unknown'
-    assert result.signals['limitations'] == ['destination_blocked']
+def _inspect(text, transport):
+    from app.analysis import analyze_message
+    from app.message_models import MessageRequest
+    return analyze_message(MessageRequest(text=text, inspect_links=True), request_id='test', transport=transport)
 
 
-def test_legacy_scan_uses_one_observation_and_no_database():
-    from app.detection.engine import run_detection
+class _ForbiddenTransport:
+    def inspect(self, *args, **kwargs):
+        pytest.fail('private destination reached the transport')
+
+
+@pytest.mark.parametrize('url', ['http://192.168.1.10/login', 'http://[::1]/login', 'https://[fd00::1]/'])
+def test_private_destination_never_reaches_transport(url):
+    result = _inspect(url, _ForbiddenTransport())
+    assert result.assessment == 'unknown'
+    assert result.links[0].inspection_status == 'blocked'
+    assert result.links[0].limitations == ['destination_blocked']
+    assert result.links[0].technical.normalized_url == candidate(url).canonical_url
+
+
+def test_inspection_uses_one_observation_per_link():
     link = candidate('https://example.com')
     calls = []
-    def inspector(url, *, deadline):
-        calls.append(url)
-        return observed(url)
-    class NoDatabase:
-        def __getattr__(self, name):
-            pytest.fail('legacy analysis touched database')
-    result = run_detection(link.raw, NoDatabase(), resolver=inspector)
+
+    class Recorder:
+        def inspect(self, url, *, deadline):
+            calls.append(url)
+            return observed(url)
+    result = _inspect(link.raw, Recorder())
     assert calls == [link.canonical_url]
-    assert result.reputation == 'unknown'
-    assert result.signals['content']['credential_form'] is False
+    assert result.assessment == 'no_clear_signs'
 
 
-def test_discount_cannot_suppress_strong_scoring_evidence():
-    from app.detection.engine import run_detection
-    result = run_detection('https://paypal.google.com/login', object(),
-        resolver=lambda url, deadline: observed(url, FIXTURE.read_text()))
-    assert result.status == 'phishing'
-    assert 'brand_impersonation' in result.signals['strong_signals']
-    assert 'allowlist_discount' not in {c['key'] for c in result.breakdown}
-
-
-@pytest.mark.parametrize('url', ['http://[::1]/login', 'https://[fd00::1]/'])
-def test_legacy_private_ipv6_is_blocked_and_unassessable(url):
-    from app.detection.engine import run_detection
-    result = run_detection(url, object(), resolver=lambda *a, **k: pytest.fail('private IPv6 reached transport'))
-    assert result.status == 'unknown'
-    assert result.signals['limitations'] == ['destination_blocked']
-    assert result.normalized_url == candidate(url).canonical_url
+def test_trusted_root_cannot_suppress_brand_and_form_evidence():
+    link = candidate('https://paypal.google.com/login')
+    result = analyze(link, observed(link.canonical_url, FIXTURE.read_text()))
+    assert result.assessment == 'phishing'
+    assert {'brand_destination_mismatch', 'credential_form'} <= {r.code for r in result.reasons}
 
 
 def test_non_html_observation_preserves_content_type_without_absence_claim():

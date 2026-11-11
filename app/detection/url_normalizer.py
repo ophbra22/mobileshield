@@ -6,7 +6,6 @@ import tldextract
 
 from app.detection.models import URLParts
 
-
 _DOMAIN_EXTRACTOR = tldextract.TLDExtract(
     suffix_list_urls=(), cache_dir=None, include_psl_private_domains=True,
 )

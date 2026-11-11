@@ -4,17 +4,12 @@ import logging
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import Session
-from sqlalchemy.pool import StaticPool
-
-from tests.test_message_api import client
 
 
 @pytest.mark.parametrize('path', ['/v1/scans', '/v1/scans/1', '/v1/scans/1/report.pdf'])
 def test_history_gone_without_database_dependency(client, path):
-    from app.main import app
     from app.db.deps import get_db
+    from app.main import app
     def forbidden_db():
         pytest.fail('Retired history accessed database')
     app.dependency_overrides[get_db] = forbidden_db
@@ -23,27 +18,16 @@ def test_history_gone_without_database_dependency(client, path):
     assert result.headers['cache-control'] == 'no-store'
 
 
-def test_synthetic_history_unchanged_and_no_new_writes(client):
-    from app.main import app
-    from app.db.database import Base
+def test_scans_never_request_a_database_session(client):
     from app.db.deps import get_db
-    from app.db.models import Scan
-    engine = create_engine('sqlite://', poolclass=StaticPool)
-    Base.metadata.create_all(engine)
-    with Session(engine) as db:
-        db.add(Scan(normalized_url='https://synthetic.example/private', domain='synthetic.example',
-                    risk_score=7, verdict='legacy', confidence='legacy', reasons=['synthetic'], signals={'synthetic': True}))
-        db.commit()
-        before = [dict(row) for row in db.execute(select(Scan.__table__)).mappings()]
-        def forbidden_db():
-            pytest.fail('Scan route requested a database session')
-        app.dependency_overrides[get_db] = forbidden_db
-        assert client.post('/v1/analyze-message', json={'text': 'hello'}).status_code == 200
-        assert client.post('/v1/analyze', json={'url': 'https://example.com'}).status_code == 200
-        for path in ('/v1/scans', '/v1/scans/1', '/v1/scans/1/report.pdf'):
-            assert client.get(path).status_code == 410
-        after = [dict(row) for row in db.execute(select(Scan.__table__)).mappings()]
-        assert before == after
+    from app.main import app
+    def forbidden_db():
+        pytest.fail('Scan route requested a database session')
+    app.dependency_overrides[get_db] = forbidden_db
+    assert client.post('/v1/analyze-message', json={'text': 'hello'}).status_code == 200
+    assert client.post('/v1/analyze', json={'url': 'https://example.com'}).status_code == 200
+    for path in ('/v1/scans', '/v1/scans/1', '/v1/scans/1/report.pdf'):
+        assert client.get(path).status_code == 410
 
 
 def test_limiter_expires_and_caps_identity_memory():
@@ -52,8 +36,10 @@ def test_limiter_expires_and_caps_identity_memory():
     limiter = ScanRateLimiter(limit=1, clock=clock)
     for i in range(10000):
         assert limiter.allow(str(i))
-    assert not limiter.allow('overflow')
+    # A full table evicts the oldest window instead of locking out new clients.
+    assert limiter.allow('overflow')
     assert len(limiter._identities) == 10000
+    assert '0' not in limiter._identities and 'overflow' in limiter._identities
     clock.return_value = 61
     assert limiter.allow('fresh')
     assert len(limiter._identities) == 1
@@ -96,7 +82,8 @@ def test_uvicorn_managed_logs_do_not_leak(client, caplog):
 @pytest.mark.parametrize('path', ['/v1/analyze-message', '/v1/analyze-message/', '/v1/analyze/', '/unmatched'])
 def test_request_work_overflow_and_cleanup(exit_mode, path):
     from types import SimpleNamespace
-    from app.scan_limits import PrivateRequestMiddleware, ScanRateLimiter, RequestWorkAdmission
+
+    from app.scan_limits import PrivateRequestMiddleware, RequestWorkAdmission, ScanRateLimiter
     admission = RequestWorkAdmission()
     entered = 0
     ready = asyncio.Event()
@@ -152,9 +139,11 @@ def test_idle_identity_expiry_does_not_require_another_scan():
 
 def test_lifespan_runs_and_stops_idle_cleanup(monkeypatch):
     import threading
+
+    from fastapi.testclient import TestClient
+
     import app.main as main
     from app.scan_limits import ScanRateLimiter
-    from fastapi.testclient import TestClient
     initialize = Mock()
     monkeypatch.setattr(main, 'initialize_database', initialize)
     clock = Mock(return_value=0)
@@ -175,3 +164,20 @@ def test_lifespan_runs_and_stops_idle_cleanup(monkeypatch):
         assert limiter._identities == {}
     initialize.assert_called_once_with()
     assert task.done()
+
+
+def test_ipv6_clients_share_a_limit_per_64():
+    from app.scan_limits import client_identity
+    assert client_identity('2001:db8:1:2::1') == client_identity('2001:db8:1:2:ffff::9') == '2001:db8:1:2::/64'
+    assert client_identity('2001:db8:1:3::1') != client_identity('2001:db8:1:2::1')
+    assert client_identity('203.0.113.7') == '203.0.113.7'
+    assert client_identity('::ffff:203.0.113.7') == '203.0.113.7'
+    assert client_identity(None) == '<unknown>'
+
+
+def test_identity_flood_cannot_lock_out_other_clients():
+    from app.scan_limits import ScanRateLimiter
+    limiter = ScanRateLimiter(limit=5, clock=Mock(return_value=0), max_identities=100)
+    for i in range(1000):
+        limiter.allow(f'attacker-{i}')
+    assert limiter.allow('legitimate-user')

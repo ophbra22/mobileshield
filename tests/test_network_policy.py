@@ -6,7 +6,6 @@ import pytest
 
 from app.detection import network_policy as policy
 
-
 FORBIDDEN = [
     'http://127.0.0.1/', 'http://10.0.0.1/', 'http://172.16.0.1/',
     'http://192.168.1.1/', 'http://169.254.169.254/', 'http://100.64.0.1/',

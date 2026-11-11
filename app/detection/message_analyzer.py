@@ -5,7 +5,7 @@ import re
 import unicodedata
 
 from app.brand import claimed_brands, is_official_domain, official_domains_for_brand
-from app.message_models import AssessmentSummary, LinkResult, ParsedMessage, Reason, MAX_REASONS
+from app.message_models import MAX_REASONS, AssessmentSummary, LinkResult, ParsedMessage, Reason
 
 # Bounded request families: imperative gender/number, infinitive and the
 # corresponding second-person forms used in prevention statements. All pass

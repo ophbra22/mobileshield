@@ -7,9 +7,9 @@ for thresholds and deliberate blind spots. No I/O or warning-rule dependencies.
 """
 from __future__ import annotations
 
-from collections import Counter
 import re
 import unicodedata
+from collections import Counter
 
 # Closed-class grammar and discourse markers, not a content-word vocabulary.
 _EN = frozenset("""

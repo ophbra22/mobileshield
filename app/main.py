@@ -10,19 +10,24 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from app.auth import require_admin_ip_allowlist, require_admin_token
 from app.db.database import engine, initialize_database
 from app.db.deps import get_db
 from app.db.models import ApiKey
 from app.routers.analyze import router as analyze_router
-from app.scan_limits import PrivateRequestMiddleware, ScanRateLimiter, RequestWorkAdmission, configure_private_server_logging
+from app.scan_limits import (
+    PrivateRequestMiddleware,
+    RequestWorkAdmission,
+    ScanRateLimiter,
+    configure_private_server_logging,
+)
 from app.settings import get_settings
 
 settings = get_settings()
@@ -129,7 +134,7 @@ def readyz() -> dict:
             connection.execute(text('SELECT 1'))
         return {'ready': True}
     except OperationalError:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='database not ready')
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='database not ready') from None
 
 
 @app.post('/admin/create-api-key')

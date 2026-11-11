@@ -3,11 +3,9 @@ import logging
 from types import SimpleNamespace
 from unittest.mock import Mock
 
-import pytest
 import jwt
+import pytest
 from jwt import ExpiredSignatureError, InvalidAlgorithmError, InvalidTokenError
-
-from tests.test_message_api import client
 
 
 @pytest.mark.parametrize('host', ['testserver/docs?PRIVATE_HOST=', 'testserver/docs#PRIVATE_HOST='])
@@ -36,6 +34,7 @@ def test_actual_docs_keep_documentation_csp(client, path, host):
 
 def test_malformed_host_cannot_bypass_scan_admission_or_enable_network(client, monkeypatch):
     import requests
+
     from app.main import app
     from app.scan_limits import ScanRateLimiter
     request = Mock(side_effect=AssertionError('Unexpected Requests call'))

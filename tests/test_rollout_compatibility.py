@@ -1,13 +1,11 @@
 """Legacy browser negotiation and executable old/new client contract checks."""
 import json
-from pathlib import Path
 import re
 import subprocess
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
-
-from tests.test_message_api import client
 
 ROOT = Path(__file__).resolve().parents[1]
 ORIGIN = 'http://localhost:3000'

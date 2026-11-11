@@ -5,11 +5,15 @@ from pathlib import Path
 
 import pytest
 
+from app.detection.url_normalizer import extract_domain, split_domain
 from app.message_models import (
-    AssessmentSummary, LinkResult, MessageRequest, MessageResponse, Reason,
+    AssessmentSummary,
+    LinkResult,
+    MessageRequest,
+    MessageResponse,
+    Reason,
 )
 from app.message_parser import parse_message
-from app.detection.url_normalizer import extract_domain, split_domain
 
 
 def test_plain_hebrew_preserves_complete_input():

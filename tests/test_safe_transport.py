@@ -1,10 +1,10 @@
 """Hermetic transport checks with fake public observations and byte streams."""
-from concurrent.futures import ThreadPoolExecutor
 import io
 import socket
 import ssl
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 

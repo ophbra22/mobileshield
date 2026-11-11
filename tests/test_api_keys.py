@@ -50,3 +50,14 @@ def test_unknown_or_revoked_keys_are_rejected(db):
     with pytest.raises(HTTPException) as revoked:
         require_api_key(raw, db)
     assert revoked.value.status_code == 401
+
+
+def test_per_key_rate_limit(db, monkeypatch):
+    from app import auth
+    monkeypatch.setattr(auth.settings, 'rate_limit_per_minute', 2)
+    raw, _ = _add_key(db, 'limited')
+    require_api_key(raw, db)
+    require_api_key(raw, db)
+    with pytest.raises(HTTPException) as limited:
+        require_api_key(raw, db)
+    assert limited.value.status_code == 429
