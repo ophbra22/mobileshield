@@ -1,4 +1,4 @@
-"""Whole-branch review regressions; all destinations and bodies are synthetic."""
+"""End-to-end regression cases through the real ASGI app; all destinations and bodies are synthetic."""
 import asyncio
 import json
 from types import SimpleNamespace

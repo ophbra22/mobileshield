@@ -181,3 +181,15 @@ def test_identity_flood_cannot_lock_out_other_clients():
     for i in range(1000):
         limiter.allow(f'attacker-{i}')
     assert limiter.allow('legitimate-user')
+
+
+def test_uvicorn_lifecycle_messages_are_not_reported_as_errors(caplog):
+    from app.scan_limits import configure_private_server_logging
+    configure_private_server_logging()
+    with caplog.at_level(logging.INFO, logger='uvicorn.error'):
+        logging.getLogger('uvicorn.error').info('Started server process [%d]', 4242)
+        logging.getLogger('uvicorn.error').info('Uvicorn running on %s://%s:%d (Press CTRL+C to quit)',
+                                                'http', '127.0.0.1', 8000)
+    messages = [r.getMessage() for r in caplog.records if r.name == 'uvicorn.error']
+    assert messages == ['Started server process [4242]',
+                        'Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)']

@@ -3,6 +3,7 @@ name = "mobileshield"
 version = "1.0.0"
 description = "Bilingual (Hebrew/English) phishing-message checker"
 requires-python = ">=3.11"
+license = "MIT"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

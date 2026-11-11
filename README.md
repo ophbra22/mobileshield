@@ -3,17 +3,17 @@
 **A bilingual (Hebrew/English) phishing-message checker.** Paste a suspicious SMS, WhatsApp or email message and MobileShield explains *why* it looks risky: credential or payment requests, pressure tactics, brand impersonation, look-alike domains and dangerous landing pages.
 
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.162-009688?logo=fastapi&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
-[![CI](https://github.com/ophbra22/mobileshield-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/ophbra22/mobileshield-backend/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-964%20passing-2ea44f)
+[![CI](https://github.com/ophbra22/mobileshield/actions/workflows/ci.yml/badge.svg)](https://github.com/ophbra22/mobileshield/actions/workflows/ci.yml)
+![Tests](https://img.shields.io/badge/tests-965%20passing-2ea44f)
 
 <p align="center">
-  <img src="docs/images/mobileshield-he-1440-input.png" alt="MobileShield home screen in Hebrew" width="640">
-  &nbsp;
-  <img src="docs/images/mobileshield-en-390-evidence.png" alt="Per-link evidence on mobile" width="200">
+  <img src="docs/images/home-he.png" alt="MobileShield home screen in Hebrew" width="42%">
+  <img src="docs/images/result-phishing-en.png" alt="A phishing assessment with reasons and next steps" width="42%">
+  <img src="docs/images/link-details-mobile-en.png" alt="Per-link evidence on mobile" width="13%">
 </p>
 
 ---
@@ -99,8 +99,14 @@ curl -s -X POST http://localhost:8000/v1/analyze-message \
 ## Tech stack
 
 - **Backend:** Python 3.11, FastAPI, Pydantic v2 (strict contracts), SQLAlchemy 2, PostgreSQL, `tldextract`, `idna`
-- **Frontend:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS 4, bilingual RTL/LTR UI with an accessibility focus
-- **Testing:** pytest (834 hermetic tests that make no network or DNS calls), Vitest + Testing Library (130 tests), Ruff
+- To demo the UI without contacting any real site, run the synthetic fixture server instead. It simulates hosts such as `paypal-login.attacker.example`:
+
+```bash
+DATABASE_URL=sqlite:// uvicorn tests.fixture_server:app --port 8000
+```
+
+**Frontend:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS 4, bilingual RTL/LTR UI with an accessibility focus
+- **Testing:** pytest (835 hermetic tests that make no network or DNS calls), Vitest + Testing Library (130 tests), Ruff
 - **Infrastructure:** Docker, Docker Compose, GitHub Actions (tests, lint, type checks, build and dependency audits)
 
 ## Getting started
@@ -108,8 +114,8 @@ curl -s -X POST http://localhost:8000/v1/analyze-message \
 ### Docker Compose (everything)
 
 ```bash
-git clone https://github.com/ophbra22/mobileshield-backend.git
-cd mobileshield-backend
+git clone https://github.com/ophbra22/mobileshield.git
+cd mobileshield
 cp .env.example .env
 docker compose up --build
 ```
@@ -177,6 +183,10 @@ docs/                       # API contract, architecture, screenshots
 ## Limitations
 
 MobileShield is a heuristic decision aid, **not a safety guarantee**. Detection relies on rules, a curated brand registry and a small local blocklist rather than live threat-intelligence feeds, so new or subtle attacks can be missed. Rate limiting is per process. Production needs a proxy that passes the real client IP, and several workers need a shared store such as Redis. User accounts and API-key routes are implemented but not mounted in the public beta. See [deployment notes](docs/architecture.md#deployment-notes).
+
+## License
+
+[MIT](LICENSE)
 
 ## Author
 

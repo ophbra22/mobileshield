@@ -121,7 +121,7 @@ def test_all_contract_enums_survive_endpoint_serialization(client, monkeypatch):
 def test_fixture_transport_partial_failures_keep_observed_warning(client):
     from app.main import app
     from app.routers.analyze import get_scan_transport
-    from tests.browser_app import FixtureTransport
+    from tests.fixture_server import FixtureTransport
     app.dependency_overrides[get_scan_transport] = FixtureTransport
     result = client.post('/v1/analyze-message', json={
         'text': 'Send your password https://paypal-login.attacker.example https://failed.example https://busy.example https://example.org',
@@ -134,7 +134,7 @@ def test_fixture_transport_partial_failures_keep_observed_warning(client):
 
 
 def test_fixture_unknown_destinations_fail_without_socket_or_dns():
-    from tests.browser_app import FixtureTransport
+    from tests.fixture_server import FixtureTransport
     # tests/conftest.py detects network attempts even if swallowed by the code.
     result = FixtureTransport().inspect('https://arbitrary.example/private?token=SYNTHETIC', deadline=0)
     assert result.limitations == ['inspection_failed']

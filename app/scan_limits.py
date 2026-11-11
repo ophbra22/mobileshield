@@ -108,18 +108,25 @@ class _SuppressAccess(logging.Filter):
         return False
 
 
+# Uvicorn lifecycle messages whose arguments are only a PID or the bind address.
+_LIFECYCLE_TEMPLATES = frozenset({
+    'Started server process [%d]', 'Finished server process [%d]',
+    'Waiting for application startup.', 'Application startup complete.',
+    'Waiting for application shutdown.', 'Application shutdown complete.', 'Shutting down',
+    'Uvicorn running on %s://%s:%d (Press CTRL+C to quit)',
+    'Uvicorn running on %s://[%s]:%d (Press CTRL+C to quit)',
+})
+
+
 class _SanitizeServer(logging.Filter):
     def filter(self, record):
-        if (isinstance(record.msg, str) and not record.args and not record.exc_info
-                and not record.exc_text and not record.stack_info and record.msg in {
-            'Waiting for application startup.', 'Application startup complete.',
-            'Waiting for application shutdown.', 'Application shutdown complete.', 'Shutting down',
-        }):
+        if (isinstance(record.msg, str) and record.msg in _LIFECYCLE_TEMPLATES and record.levelno <= logging.INFO
+                and not record.exc_info and not record.exc_text and not record.stack_info):
             return True
         # Uvicorn's protocol errors and exc_info may contain URLs, headers or
         # exception messages. Preserve occurrence/severity without those details.
-        record.msg = 'route=<server-error> status=503 duration_ms=0 request_id=%s'
-        record.args = (secrets.token_hex(16),)
+        record.msg = 'route=<server-error> level=%s request_id=%s'
+        record.args = (record.levelname, secrets.token_hex(16))
         record.exc_info = record.exc_text = record.stack_info = None
         return True
 

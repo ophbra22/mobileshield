@@ -1,4 +1,4 @@
-"""Synthetic, network-free regressions for the bounded dependency remediation."""
+"""Security headers, CSP, scan admission and JWT/password handling (network-free)."""
 import logging
 from types import SimpleNamespace
 from unittest.mock import Mock

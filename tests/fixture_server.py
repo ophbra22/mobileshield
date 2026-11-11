@@ -1,8 +1,11 @@
-"""Loopback-only synthetic browser fixture; never shipped in the production image.
+"""Synthetic API for demos and UI testing; never shipped in the production image.
 
-Run from repository root with the documented fixture-only environment. The app
-is the production app, with ONLY database initialization and scan transport
-substituted. HTTP destinations are never contacted, including unknown hosts.
+It is the production app with only database startup and the link transport
+replaced, so no destination is ever contacted. Hosts such as
+``paypal-login.attacker.example`` (credential form), ``slow.example``,
+``failed.example`` and ``busy.example`` simulate inspection outcomes.
+
+    DATABASE_URL=sqlite:// uvicorn tests.fixture_server:app --port 8000
 """
 import time
 from urllib.parse import urlsplit
