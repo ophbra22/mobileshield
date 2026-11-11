@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ClipboardPaste, ArrowUpRight, Search } from 'lucide-react';
+import { ClipboardPaste, X } from 'lucide-react';
 import { MAX_TEXT_CODEPOINTS, validateMessageRequest } from '@/lib/analysis';
 import type { MessageRequest } from '@/lib/analysis';
 import { Textarea } from './ui/textarea';
@@ -39,13 +39,16 @@ export function ScanForm({ onSubmit, onInvalidate, loading }: Props) {
     }
   }
   return (
-    <form className="card scan-card" onSubmit={event => { event.preventDefault(); if (valid && !loading) onSubmit({ text, inspect_links: inspectLinks }); }} aria-labelledby="form-title">
-      <div className="card-heading"><Search size={20} aria-hidden="true" /><h2 id="form-title">{t.scanTitle}</h2><span className="step-tag" aria-hidden="true">01</span></div>
+    <form className="scan-form" onSubmit={event => { event.preventDefault(); if (valid && !loading) onSubmit({ text, inspect_links: inspectLinks }); }} aria-labelledby="form-title">
+      <div className="intro">
+        <h1 id="form-title">{t.title}</h1>
+        <p>{t.intro}</p>
+      </div>
       <div className="input-heading">
         <label htmlFor="message-input">{t.messageLabel}</label>
         <div className="draft-actions">
-          <button type="button" className="quiet-button" onClick={() => void paste()}><ClipboardPaste size={16} aria-hidden="true" />{t.paste}</button>
-          <button type="button" className="quiet-button" onClick={() => { changeText(''); inputRef.current?.focus(); }}>{t.clear}</button>
+          <button type="button" className="quiet-button" onClick={() => void paste()}><ClipboardPaste size={18} aria-hidden="true" />{t.paste}</button>
+          <button type="button" className="quiet-button" onClick={() => { changeText(''); inputRef.current?.focus(); }}><X size={18} aria-hidden="true" />{t.clear}</button>
         </div>
       </div>
       <Textarea id="message-input" ref={inputRef} dir={text.trim() ? 'auto' : lang === 'he' ? 'rtl' : 'ltr'} rows={7} value={text} onChange={event => changeText(event.target.value)} placeholder={t.placeholder}
@@ -59,10 +62,8 @@ export function ScanForm({ onSubmit, onInvalidate, loading }: Props) {
         }} />
         <div><label htmlFor="inspect-links">{t.inspectLabel}</label><p id="inspection-help">{t.inspectHelp}</p></div>
       </div>
-      <div className="submit-row">
-        <p>{t.staticHelp}</p>
-        <button className="primary-button" type="submit" disabled={!valid || loading}>{t.scanButton}<ArrowUpRight size={18} aria-hidden="true" /></button>
-      </div>
+      <button className="primary-button submit-button" type="submit" disabled={!valid || loading}>{t.scanButton}</button>
+      <p className="static-help">{t.staticHelp}</p>
     </form>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, ShieldAlert, Search, HelpCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Check, HelpCircle, Loader2, SearchCheck, X } from 'lucide-react';
 import type { MessageAnalysisState } from '../hooks/useMessageAnalysis';
 import type { Reason } from '@/lib/analysis';
 import { useLanguage } from '../context/LanguageContext';
@@ -32,17 +32,17 @@ function hasOnlyTextLimitation(state: MessageAnalysisState) {
 function ResultContent({ state, onCancel, onRetry }: Props) {
   const { t } = useLanguage();
   const reasonCopy = (code: string) => t.reasons[code as keyof typeof t.reasons] ?? t.reasons.unknown_reason;
-  const reasonList = (reasons: Reason[]) => (
-    <ul className="evidence-list">
+  const reasonList = (reasons: Reason[], marked = false) => (
+    <ul className={marked ? 'evidence-list marked-list' : 'evidence-list'}>
       {Array.from(new Set(reasons.map(reason => reason.code))).map(code => (
-        <li key={code}>{reasonCopy(code)}</li>
+        <li key={code}>{marked && <X className="list-icon" size={26} aria-hidden="true" />}<span>{reasonCopy(code)}</span></li>
       ))}
     </ul>
   );
   if (state.status === 'idle') return null;
   if (state.status === 'loading') return (
     <section className="card pending-card" aria-label={t.resultContext}>
-      <p><Loader2 size={20} className="loading-icon" aria-hidden="true" />{t.checking}</p>
+      <p><Loader2 size={28} className="loading-icon" aria-hidden="true" />{t.checking}</p>
       <button className="secondary-button" type="button" onClick={onCancel}>{t.cancel}</button>
     </section>
   );
@@ -58,31 +58,32 @@ function ResultContent({ state, onCancel, onRetry }: Props) {
   if (state.status !== 'result') return null;
   const result = state.result;
   const limitedText = hasOnlyTextLimitation(state);
-  const Icon = { phishing: ShieldAlert, suspicious: AlertCircle, no_clear_signs: Search, unknown: HelpCircle }[result.assessment];
+  const Icon = { phishing: AlertCircle, suspicious: AlertTriangle, no_clear_signs: SearchCheck, unknown: HelpCircle }[result.assessment];
   return (
-    <section className={`card result-card assessment-${result.assessment}`} aria-labelledby="assessment-title">
-      <div className="assessment-heading">
-        <span className="assessment-icon"><Icon size={25} aria-hidden="true" /></span>
+    <section className={`result assessment-${result.assessment}`} aria-labelledby="assessment-title">
+      <div className="verdict-band">
+        <Icon className="verdict-icon" size={60} strokeWidth={2.2} aria-hidden="true" />
         <div>
-          <p className="eyebrow">{t.resultLabel}</p>
-          <h2 id="assessment-title">{limitedText ? t.limitedTextTitle : t.assessments[result.assessment]}</h2>
+          <h2 id="assessment-title">{limitedText ? t.limitedTextTitle : t.verdicts[result.assessment]}</h2>
+          <p>{limitedText ? t.limitedTextHelp : t.descriptions[result.assessment]}</p>
         </div>
       </div>
-      <p className="muted result-context">{t.resultContext}</p>
-      <p>{limitedText ? t.limitedTextHelp : t.descriptions[result.assessment]}</p>
-      {result.assessment === 'no_clear_signs' && <p className="no-guarantee">{t.noGuarantee}</p>}
+      <div className="result-body">
+      <div className="reasons-block">
+        <h3>{t.reasonsTitle}</h3>
+        {result.reasons.length ? reasonList(result.reasons, true) : <p className="muted">{t.noReasons}</p>}
+      </div>
       {result.recommended_actions.length > 0 && (
         <div className="action-card">
           <h3>{t.nextStep}</h3>
-          <ul>
-            {result.recommended_actions.map(action => <li key={action}>{t.actions[action]}</li>)}
+          <ul className="marked-list">
+            {result.recommended_actions.map(action => (
+              <li key={action}><Check className="list-icon" size={26} strokeWidth={2.6} aria-hidden="true" /><span>{t.actions[action]}</span></li>
+            ))}
           </ul>
         </div>
       )}
-      <div className="reasons-block">
-        <h3>{t.reasonsTitle}</h3>
-        {result.reasons.length ? reasonList(result.reasons) : <p className="muted">{t.noReasons}</p>}
-      </div>
+      {result.assessment === 'no_clear_signs' && <p className="no-guarantee">{t.noGuarantee}</p>}
       <div className="coverage-block">
         <h3>{t.coverageTitle}</h3>
         <p className="coverage-status">{limitedText ? t.limitedTextTitle : t[result.analysis_status]}</p>
@@ -135,6 +136,7 @@ function ResultContent({ state, onCancel, onRetry }: Props) {
           </ol>
         </details>
       ) : <p className="muted no-links">{t.noLinks}</p>}
+      </div>
     </section>
   );
 }
@@ -145,7 +147,7 @@ export function ResultDisplay(props: Props) {
   const { state } = props;
   const announcement = state.status === 'loading' ? t.checking
     : state.status === 'error' ? t.errorTitle
-    : state.status === 'result' ? `${t.resultLabel}: ${hasOnlyTextLimitation(state) ? t.limitedTextTitle : t.assessments[state.result.assessment]}` : '';
+    : state.status === 'result' ? `${t.resultLabel}: ${hasOnlyTextLimitation(state) ? t.limitedTextTitle : t.verdicts[state.result.assessment]}` : '';
   return (
     <>
       <p className="sr-only" role="status" aria-atomic="true">{announcement}</p>
