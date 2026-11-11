@@ -5,10 +5,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.db.deps import get_db
+from app.db.deps import get_db, user_from_bearer
 from app.db.models import ApiKey, ApiKeyUsage, RateLimitWindow, User
 from app.settings import get_settings
-from app.security import constant_time_compare, decode_jwt, hash_api_key
+from app.security import constant_time_compare, hash_api_key
 
 
 settings = get_settings()
@@ -87,7 +87,7 @@ def require_admin_token(x_admin_token: str | None = Header(default=None, alias='
     # Dev-only administrative endpoint. Replace with hardened IAM in production.
     if not settings.enable_admin:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Not found')
-    if not settings.admin_token or x_admin_token != settings.admin_token:
+    if not settings.admin_token or not x_admin_token or not constant_time_compare(x_admin_token, settings.admin_token):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Unauthorized')
 
 
@@ -136,17 +136,6 @@ def resolve_identity(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid API key.')
     # Else check JWT
     auth = request.headers.get('Authorization')
-    if auth and auth.lower().startswith('bearer '):
-        token = auth.split(' ', 1)[1]
-        try:
-            payload = decode_jwt(token)
-        except Exception:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid token')
-        user_id = payload.get('sub')
-        if not user_id:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid token')
-        user = db.get(User, user_id)
-        if not user:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='User not found')
-        return user, None
+    if auth:
+        return user_from_bearer(auth, db), None
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Missing credentials')
