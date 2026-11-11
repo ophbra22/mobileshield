@@ -1,6 +1,7 @@
 'use client';
 
 import { HeaderBar } from './components/HeaderBar';
+import { SiteFooter } from './components/SiteFooter';
 import { ScanForm } from './components/ScanForm';
 import { ResultDisplay } from './components/ResultDisplay';
 import { useMessageAnalysis } from './hooks/useMessageAnalysis';
@@ -17,14 +18,7 @@ export default function Home() {
         <ScanForm onSubmit={request => void submit(request)} onInvalidate={invalidate} loading={state.status === 'loading'} />
         <ResultDisplay state={state} onCancel={cancel} onRetry={() => void retry()} />
       </main>
-      <footer className="site-footer">
-        <p>{t.footerNote}</p>
-        <nav aria-label={t.contact}>
-          <a href="mailto:MobileShield@gmail.com">{t.contact}</a>
-          <a href="https://www.linkedin.com/in/ophir-braude-188252378/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-          <a href="https://github.com/ophbra22/mobileshield" target="_blank" rel="noopener noreferrer">GitHub</a>
-        </nav>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

@@ -30,6 +30,7 @@ Most phishing in Israel now arrives as a short text message ("your package is he
 - **Optional live page inspection.** With the user's opt-in, the server visits the link and reports credential/payment forms, page-title brand claims, redirect chains and TLS certificate problems.
 - **Explainable results.** Every verdict (`phishing` / `suspicious` / `no_clear_signs` / `unknown`) comes with typed reasons, per-link evidence, recommended actions and an honest coverage status. A check that could not run is never reported as "safe".
 - **Readable by anyone.** Large type, one plain-language verdict sentence, full-width controls and 44px+ touch targets, designed with older users in mind. Hebrew RTL and English LTR, keyboard navigation with a skip link, screen-reader announcements, reduced-motion and forced-colors support. Verdict colors differ in lightness as well as hue, so they stay distinguishable for color-blind users.
+- **Legal and accessibility pages for an Israeli audience.** A privacy policy written for the Protection of Privacy Law (Amendment 13), a cookie and storage policy, terms of use, and an accessibility statement for IS 5568 / WCAG 2.1 AA. There are no cookies; a non-blocking notice asks before the language choice is saved on the device.
 - **Privacy by design.** No database dependency on the scan path, nothing is stored, responses are `Cache-Control: no-store` and request logs contain only route, status, duration and a random request ID.
 
 ## Security engineering highlights
@@ -101,7 +102,7 @@ curl -s -X POST http://localhost:8000/v1/analyze-message \
 
 - **Backend:** Python 3.11, FastAPI, Pydantic v2 (strict contracts), SQLAlchemy 2, PostgreSQL, `tldextract`, `idna`
 - **Frontend:** Next.js 15 (App Router), React 19, TypeScript, plain CSS with a self-hosted Heebo font (no third-party requests)
-- **Testing:** pytest (849 hermetic tests that make no network or DNS calls), Vitest + Testing Library (130 tests), Playwright cross-browser tests on Chromium, Firefox and WebKit at phone, tablet and desktop sizes, Ruff
+- **Testing:** pytest (849 hermetic tests that make no network or DNS calls), Vitest + Testing Library (130 tests), Playwright cross-browser tests on Chromium, Firefox and WebKit at phone, tablet and desktop sizes, axe-core WCAG 2.1 AA checks on every page, Ruff
 - **Infrastructure:** Docker, Docker Compose, GitHub Actions (tests, lint, type checks, build, cross-browser runs with screenshots, and dependency audits)
 
 ## Getting started

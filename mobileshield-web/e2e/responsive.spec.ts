@@ -2,6 +2,11 @@ import { expect, test, type Page } from '@playwright/test';
 
 const SCAM = 'PayPal: your account is locked. Log in now to confirm your password: https://paypal-login.attacker.example/';
 
+// The storage notice has its own spec; answer it up front so it does not cover controls.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('ms_storage_choice', 'denied'));
+});
+
 async function expectNoHorizontalScroll(page: Page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
@@ -23,7 +28,7 @@ test('home page fits the screen in Hebrew and English', async ({ page }, testInf
   await expectTouchTargets(page);
   await page.screenshot({ path: testInfo.outputPath(`home-he-${testInfo.project.name}.png`), fullPage: true });
 
-  await page.getByRole('button', { name: 'מעבר לאנגלית' }).click();
+  await page.getByRole('button', { name: /מעבר לאנגלית/ }).click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
   await expect(page.getByRole('heading', { level: 1, name: 'Got a message you are not sure about?' })).toBeVisible();
   await expectNoHorizontalScroll(page);
@@ -31,7 +36,7 @@ test('home page fits the screen in Hebrew and English', async ({ page }, testInf
 
 test('a scam message gets a clear verdict that fits the screen', async ({ page }, testInfo) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'מעבר לאנגלית' }).click();
+  await page.getByRole('button', { name: /מעבר לאנגלית/ }).click();
   await page.getByRole('textbox', { name: 'Message to check' }).fill(SCAM);
   await page.getByRole('checkbox', { name: 'Inspect linked pages too' }).check();
   await page.getByRole('button', { name: 'Check message' }).click();

@@ -1,10 +1,16 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { CHOICE_EVENT, LANGUAGE_KEY, readStorageChoice } from '@/lib/consent';
 
 type Lang = 'he' | 'en';
 const translations = {
   en: {
+    legalNav: 'Site information', privacy: 'Privacy policy', cookies: 'Cookies and storage', terms: 'Terms of use',
+    accessibility: 'Accessibility statement', storageSettings: 'Storage settings', backHome: 'Back to the message check',
+    lastUpdated: 'Last updated', noticeTitle: 'Cookies and storage',
+    noticeText: 'This site uses no cookies and no tracking. If you allow it, we save only your language choice on this device.',
+    noticeAllow: 'Allow', noticeDeny: 'Do not save', noticeMore: 'Cookie and storage policy',
     skipToContent: 'Skip to content', headerTagline: 'A second look before you act', language: 'Switch to Hebrew', contact: 'Contact us',
     title: 'Got a message you are not sure about?', intro: 'Paste it here. We will tell you in plain words whether to be careful.',
     scanTitle: 'Check the whole message', messageLabel: 'Message to check', placeholder: 'Paste the message here, including any links…',
@@ -55,6 +61,11 @@ const translations = {
     footerNote: 'A check helps you decide. When in doubt, verify independently.',
   },
   he: {
+    legalNav: 'מידע על האתר', privacy: 'מדיניות פרטיות', cookies: 'עוגיות ואחסון', terms: 'תנאי שימוש',
+    accessibility: 'הצהרת נגישות', storageSettings: 'הגדרות אחסון', backHome: 'חזרה לבדיקת הודעה',
+    lastUpdated: 'עודכן לאחרונה', noticeTitle: 'עוגיות ואחסון',
+    noticeText: 'האתר לא משתמש בעוגיות ולא במעקב. אם תאשרו, נשמור במכשיר רק את בחירת השפה שלכם.',
+    noticeAllow: 'אישור', noticeDeny: 'לא לשמור', noticeMore: 'מדיניות עוגיות ואחסון',
     skipToContent: 'דילוג לתוכן', headerTagline: 'עוד מבט לפני שפועלים', language: 'מעבר לאנגלית', contact: 'יצירת קשר',
     title: 'קיבלתם הודעה ואתם לא בטוחים?', intro: 'הדביקו אותה כאן. נגיד לכם במילים פשוטות אם כדאי להיזהר.',
     scanTitle: 'בודקים את ההודעה המלאה', messageLabel: 'הודעה לבדיקה', placeholder: 'הדביקו כאן את ההודעה, כולל הקישורים…',
@@ -111,13 +122,20 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLang] = useState<Lang>('he');
   useEffect(() => {
-    // Only the language preference is stored; message drafts and results are not.
-    try { const saved = localStorage.getItem('ms_lang'); if (saved === 'he' || saved === 'en') setLang(saved); } catch { /* Preference storage is optional. */ }
+    // Only the language preference is ever stored; message drafts and results are not.
+    try { const saved = localStorage.getItem(LANGUAGE_KEY); if (saved === 'he' || saved === 'en') setLang(saved); } catch { /* Preference storage is optional. */ }
   }, []);
   useEffect(() => {
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
-    try { localStorage.setItem('ms_lang', lang); } catch { /* Manual language switching still works. */ }
+    // Saved only after the visitor allows it in the storage notice.
+    const save = () => {
+      if (readStorageChoice() !== 'granted') return;
+      try { localStorage.setItem(LANGUAGE_KEY, lang); } catch { /* Manual language switching still works. */ }
+    };
+    save();
+    window.addEventListener(CHOICE_EVENT, save);
+    return () => window.removeEventListener(CHOICE_EVENT, save);
   }, [lang]);
   const value = useMemo(() => ({ lang, t: translations[lang], toggleLanguage: () => setLang(prev => prev === 'he' ? 'en' : 'he'), setLanguage: setLang }), [lang]);
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
