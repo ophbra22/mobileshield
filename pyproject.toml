@@ -10,7 +10,7 @@ testpaths = ["tests"]
 addopts = "-p no:cacheprovider"
 filterwarnings = [
     # Starlette's TestClient nudges toward httpx2; the httpx client is still supported.
-    "ignore::DeprecationWarning:fastapi.testclient",
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
     # Tests deliberately sign tokens with short synthetic keys.
     "ignore::jwt.warnings.InsecureKeyLengthWarning",
 ]

@@ -7,12 +7,13 @@
 ![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-893%20passing-2ea44f)
+[![CI](https://github.com/ophbra22/mobileshield-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/ophbra22/mobileshield-backend/actions/workflows/ci.yml)
+![Tests](https://img.shields.io/badge/tests-964%20passing-2ea44f)
 
 <p align="center">
-  <img src="docs/verification/images/mobileshield-he-1440-input.png" alt="MobileShield home screen in Hebrew" width="640">
+  <img src="docs/images/mobileshield-he-1440-input.png" alt="MobileShield home screen in Hebrew" width="640">
   &nbsp;
-  <img src="docs/verification/images/mobileshield-en-390-evidence.png" alt="Per-link evidence on mobile" width="200">
+  <img src="docs/images/mobileshield-en-390-evidence.png" alt="Per-link evidence on mobile" width="200">
 </p>
 
 ---
@@ -25,7 +26,7 @@ Most phishing in Israel now arrives as a short text message ("your package is he
 
 - **Whole-message analysis in Hebrew and English.** Finds requests for passwords, OTP codes, card details and payments, plus urgency and account threats. It handles negation, so "never share your password" is not flagged.
 - **Robust link extraction.** Extracts links from free text, including bare domains, IDN/punycode hosts, bidi control characters and trailing Hebrew punctuation. Every link is canonicalized before any check runs.
-- **Brand and look-alike detection.** Checks claimed brands (PayPal, Microsoft, Israeli banks…) against their official domains. Catches typosquats (`paypa1`), homoglyphs and brand names hidden in subdomains.
+- **Brand and look-alike detection.** A single registry of 35 brands and products (global services, Israeli banks, Israel Post) holds their official domains and how they are named in English and Hebrew. It catches brand names used as hostname tokens on foreign domains (`paypal-login.example`), homoglyphs (`paypa1`, `rnicrosoft`) and swapped letters (`mircosoft`). Matching is token-based, so `purchase.com` is not "Chase" and "20% discount" is not Discount Bank.
 - **Optional live page inspection.** With the user's opt-in, the server visits the link and reports credential/payment forms, page-title brand claims, redirect chains and TLS certificate problems.
 - **Explainable results.** Every verdict (`phishing` / `suspicious` / `no_clear_signs` / `unknown`) comes with typed reasons, per-link evidence, recommended actions and an honest coverage status. A check that could not run is never reported as "safe".
 - **Privacy by design.** No database dependency on the scan path, nothing is stored, responses are `Cache-Control: no-store` and request logs contain only route, status, duration and a random request ID.
@@ -87,7 +88,7 @@ curl -s -X POST http://localhost:8000/v1/analyze-message \
 }
 ```
 
-(The response is shortened here.) The full contract is in [`docs/api.md`](docs/api.md); interactive docs are served at `/docs` when the API is running.
+(The response is shortened here.) The full contract is in [`docs/api.md`](docs/api.md) and the design in [`docs/architecture.md`](docs/architecture.md). Interactive docs are served at `/docs` when the API is running.
 
 | Endpoint | Description |
 | --- | --- |
@@ -99,8 +100,8 @@ curl -s -X POST http://localhost:8000/v1/analyze-message \
 
 - **Backend:** Python 3.11, FastAPI, Pydantic v2 (strict contracts), SQLAlchemy 2, PostgreSQL, `tldextract`, `idna`
 - **Frontend:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS 4, bilingual RTL/LTR UI with an accessibility focus
-- **Testing:** pytest (762 hermetic tests that make no network or DNS calls), Vitest + Testing Library (131 tests)
-- **Infrastructure:** Docker, Docker Compose
+- **Testing:** pytest (834 hermetic tests that make no network or DNS calls), Vitest + Testing Library (130 tests), Ruff
+- **Infrastructure:** Docker, Docker Compose, GitHub Actions (tests, lint, type checks, build and dependency audits)
 
 ## Getting started
 
@@ -118,12 +119,12 @@ docker compose up --build
 
 ### Local development
 
-**Backend**, which needs PostgreSQL at startup (the easiest way is `docker compose up -d db`):
+**Backend.** Message analysis needs no database. SQLite is enough locally (PostgreSQL is used in Docker):
 
 ```bash
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-export DATABASE_URL=postgresql+psycopg2://mobileshield:mobileshield@localhost:5432/mobileshield
+export DATABASE_URL=sqlite:///./mobileshield.db
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -139,7 +140,8 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 npm run dev
 
 ```bash
 # Backend: hermetic, no database or network needed
-python -m pytest
+pytest
+ruff check app tests
 
 # Frontend
 cd mobileshield-web
@@ -158,23 +160,23 @@ app/
 ├── message_models.py       # Strict request/response contracts (schema v1)
 ├── text_coverage.py        # Hebrew/English text-coverage heuristics
 ├── analysis.py             # Orchestrates parsing, evidence and optional inspection
-├── brand.py                # Brand roots, typosquat & homoglyph detection
+├── brand.py                # Brand registry: official domains, claims, look-alikes
 ├── detection/
 │   ├── message_analyzer.py # Text evidence + final assessment aggregation
 │   ├── engine.py           # Per-link evidence collection
 │   ├── safe_transport.py   # SSRF-hardened HTTP/TLS inspector
 │   ├── network_policy.py   # URL authorization & isolated DNS resolution
 │   └── content_analyzer.py # HTML form / title evidence
-├── routers/                # HTTP routes
-└── db/                     # SQLAlchemy models & session
+├── routers/                # HTTP routes (analysis; auth/keys are not mounted)
+└── db/                     # SQLAlchemy models & session (admin/API keys only)
 mobileshield-web/           # Next.js frontend
-tests/                      # pytest suite + fixtures (labelled message dataset)
-docs/                       # API contract, design notes, verification reports
+tests/                      # pytest suite + fixtures (labelled URL and message datasets)
+docs/                       # API contract, architecture, screenshots
 ```
 
 ## Limitations
 
-MobileShield is a heuristic decision aid, **not a safety guarantee**. Detection relies on rules, a curated brand list and a small local blocklist rather than live threat-intelligence feeds, so new or subtle attacks can be missed. Rate limiting is in-process. In production it should sit behind a proxy that sets the real client IP, or move to a shared store such as Redis. User accounts and API-key routes exist in the codebase but are disabled in the public beta.
+MobileShield is a heuristic decision aid, **not a safety guarantee**. Detection relies on rules, a curated brand registry and a small local blocklist rather than live threat-intelligence feeds, so new or subtle attacks can be missed. Rate limiting is per process. Production needs a proxy that passes the real client IP, and several workers need a shared store such as Redis. User accounts and API-key routes are implemented but not mounted in the public beta. See [deployment notes](docs/architecture.md#deployment-notes).
 
 ## Author
 

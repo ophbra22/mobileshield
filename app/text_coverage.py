@@ -2,8 +2,8 @@
 
 Content words need plausible shapes, not dictionary membership. Each substantial
 sentence/script run must supply its own structural evidence; greetings cannot
-lend evidence to other prose. See docs/verification/2026-10-09-text-coverage.md
-for thresholds and deliberate blind spots. No I/O or warning-rule dependencies.
+lend evidence to other prose. See docs/architecture.md (Text coverage) for the
+approach and its deliberate blind spots. No I/O or warning-rule dependencies.
 """
 from __future__ import annotations
 
