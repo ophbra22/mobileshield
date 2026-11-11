@@ -8,7 +8,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 [![CI](https://github.com/ophbra22/mobileshield/actions/workflows/ci.yml/badge.svg)](https://github.com/ophbra22/mobileshield/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-965%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-979%20passing-2ea44f)
 
 <p align="center">
   <img src="docs/images/result-desktop-he.png" alt="A scam message gets the verdict 'This is probably a scam' with reasons and next steps" width="62%">
@@ -101,7 +101,7 @@ curl -s -X POST http://localhost:8000/v1/analyze-message \
 
 - **Backend:** Python 3.11, FastAPI, Pydantic v2 (strict contracts), SQLAlchemy 2, PostgreSQL, `tldextract`, `idna`
 - **Frontend:** Next.js 15 (App Router), React 19, TypeScript, plain CSS with a self-hosted Heebo font (no third-party requests)
-- **Testing:** pytest (835 hermetic tests that make no network or DNS calls), Vitest + Testing Library (130 tests), Playwright cross-browser tests on Chromium, Firefox and WebKit at phone, tablet and desktop sizes, Ruff
+- **Testing:** pytest (849 hermetic tests that make no network or DNS calls), Vitest + Testing Library (130 tests), Playwright cross-browser tests on Chromium, Firefox and WebKit at phone, tablet and desktop sizes, Ruff
 - **Infrastructure:** Docker, Docker Compose, GitHub Actions (tests, lint, type checks, build, cross-browser runs with screenshots, and dependency audits)
 
 ## Getting started
