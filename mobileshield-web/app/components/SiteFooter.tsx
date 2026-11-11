@@ -18,8 +18,6 @@ export function SiteFooter() {
       </nav>
       <nav aria-label={t.contact} className="footer-contact">
         <a href="mailto:MobileShield@gmail.com">{t.contact}</a>
-        <a href="https://www.linkedin.com/in/ophir-braude-188252378/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-        <a href="https://github.com/ophbra22/mobileshield" target="_blank" rel="noopener noreferrer">GitHub</a>
       </nav>
     </footer>
   );
