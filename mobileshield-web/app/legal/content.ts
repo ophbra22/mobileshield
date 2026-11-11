@@ -17,7 +17,6 @@ const EMAIL = 'MobileShield@gmail.com';
 const mail = { href: `mailto:${EMAIL}`, text: EMAIL };
 const PPA_HE = { href: 'https://www.gov.il/he/departments/the_privacy_protection_authority', text: 'הרשות להגנת הפרטיות' };
 const PPA_EN = { href: 'https://www.gov.il/en/departments/the_privacy_protection_authority', text: 'Privacy Protection Authority' };
-const GITHUB = { href: 'https://github.com/ophbra22/mobileshield', text: 'GitHub' };
 
 export const LEGAL: Record<LegalPageId, { he: LegalDoc; en: LegalDoc }> = {
   privacy: {
@@ -164,7 +163,7 @@ export const LEGAL: Record<LegalPageId, { he: LegalDoc; en: LegalDoc }> = {
           { p: ['אנחנו רשאים לשנות, להשהות או להפסיק את השירות או חלקים ממנו, ולעדכן את התנאים. התאריך בראש העמוד מציין את העדכון האחרון.'] },
         ] },
         { heading: 'קוד פתוח', blocks: [
-          { p: ['קוד המקור של האתר זמין ב־', GITHUB, ' ברישיון MIT.'] },
+          { p: ['קוד המקור של האתר מופץ ברישיון MIT.'] },
         ] },
         { heading: 'פרטיות', blocks: [
           { p: ['השימוש במידע מתואר במדיניות הפרטיות ובמדיניות העוגיות והאחסון.'] },
@@ -200,7 +199,7 @@ export const LEGAL: Record<LegalPageId, { he: LegalDoc; en: LegalDoc }> = {
           { p: ['We may change, suspend or end the service or parts of it, and update these terms. The date at the top of this page shows the latest update.'] },
         ] },
         { heading: 'Open source', blocks: [
-          { p: ['The site\'s source code is available on ', GITHUB, ' under the MIT license.'] },
+          { p: ['The site\'s source code is released under the MIT license.'] },
         ] },
         { heading: 'Privacy', blocks: [
           { p: ['How data is used is described in the privacy policy and the cookie and storage policy.'] },

@@ -158,7 +158,7 @@ describe('message form with the real request lifecycle', () => {
     await act(async()=>resolve('stale clipboard'));
     expect(screen.getByRole('textbox')).toHaveValue(change==='edit'?'manual':'');
   });
-  it('offers keyboard accessible language and contact/social footer affordances',async()=>{
+  it('offers keyboard accessible language, contact and site-information footer links',async()=>{
     const user=userEvent.setup(); show(); await user.tab();
     expect(screen.getByRole('link',{name:'Skip to content'})).toHaveFocus();
     expect(screen.getByRole('link',{name:'Skip to content'})).toHaveAttribute('href','#main-content');
@@ -167,8 +167,8 @@ describe('message form with the real request lifecycle', () => {
     await user.tab();
     expect(screen.getByRole('button',{name:/Switch to Hebrew/})).toHaveFocus();
     expect(screen.getByRole('link',{name:'Contact us'})).toHaveAttribute('href','mailto:MobileShield@gmail.com');
-    expect(screen.getByRole('link',{name:'LinkedIn'})).toHaveAttribute('rel','noopener noreferrer');
-    expect(screen.getByRole('link',{name:'GitHub'})).toHaveAttribute('href','https://github.com/ophbra22/mobileshield');
+    expect(screen.queryByRole('link',{name:'LinkedIn'})).not.toBeInTheDocument();
+    expect(screen.queryByRole('link',{name:'GitHub'})).not.toBeInTheDocument();
     for (const [name, href] of [['Privacy policy','/privacy'],['Cookies and storage','/cookies'],['Terms of use','/terms'],['Accessibility statement','/accessibility']]) {
       expect(screen.getByRole('link',{name})).toHaveAttribute('href',href);
     }
