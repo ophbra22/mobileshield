@@ -5,8 +5,8 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 type Lang = 'he' | 'en';
 const translations = {
   en: {
-    headerTagline: 'A second look before you act', language: 'Switch to Hebrew', contact: 'Contact us',
-    eyebrow: 'PAUSE. CHECK. DECIDE.', title: 'Something feels off?', intro: 'Check a message for warning signs before you reply, share details or open a link.',
+    skipToContent: 'Skip to content', headerTagline: 'A second look before you act', language: 'Switch to Hebrew', contact: 'Contact us',
+    title: 'Got a message you are not sure about?', intro: 'Paste it here. We will tell you in plain words whether to be careful.',
     scanTitle: 'Check the whole message', messageLabel: 'Message to check', placeholder: 'Paste the message here, including any links…',
     inputHelp: 'Include the wording and links. Remove personal details you do not need checked.', paste: 'Paste', clear: 'Clear',
     characterCount: 'characters', overLimit: 'The message exceeds 10,000 characters. Shorten it before checking.',
@@ -14,7 +14,7 @@ const translations = {
     inspectLabel: 'Inspect linked pages too', inspectHelp: 'Optional: the server visits supported public links and checks page content. This takes longer and may activate tracking or a one-time link at the destination. Off by default.',
     staticHelp: 'By default, only the message and link structure are checked; linked pages are not visited.',
     scanButton: 'Check message', checking: 'Checking message…', cancel: 'Cancel check', retry: 'Retry check',
-    resultLabel: 'MESSAGE ASSESSMENT', resultContext: 'For the message you submitted', nextStep: 'What to do next', reasonsTitle: 'Why this assessment',
+    resultLabel: 'Message assessment', resultContext: 'For the message you submitted', nextStep: 'What to do now', reasonsTitle: 'How we spotted it',
     noReasons: 'No specific warning evidence was returned.', coverageTitle: 'Check coverage',
     complete: 'Requested checks completed', partial: 'Analysis incomplete', unavailable: 'Analysis unavailable',
     partialHelp: 'Some requested checks could not finish. Any warning signs above still apply.', unavailableHelp: 'There is not enough completed analysis to draw a reliable conclusion.',
@@ -24,6 +24,7 @@ const translations = {
     errorTitle: 'Check could not finish', linkDetails: 'Link details', noLinks: 'No links were identified.', unknownHost: 'Unrecognized link',
     linkAssessment: 'Link assessment', normalizedDestination: 'Submitted destination', finalDestination: 'Final destination',
     maskedHelp: 'Private URL parts are hidden. Domains are shown as text so you can review them without opening a page.',
+    verdicts: { phishing: 'This is probably a scam.', suspicious: 'This message has warning signs.', no_clear_signs: 'No clear warning signs found.', unknown: 'We could not assess this message.' },
     assessments: { phishing: 'Phishing warning', suspicious: 'Suspicious signs', no_clear_signs: 'No clear warning signs', unknown: 'Unable to assess' },
     descriptions: { phishing: 'Strong warning signs were found. Pause before interacting with this message.', suspicious: 'This message has warning signs that deserve a closer look.', no_clear_signs: 'The completed checks did not find clear warning signs.', unknown: 'The available evidence does not support a reliable assessment.' },
     actions: {
@@ -54,16 +55,16 @@ const translations = {
     footerNote: 'A check helps you decide. When in doubt, verify independently.',
   },
   he: {
-    headerTagline: 'עוד מבט לפני שפועלים', language: 'מעבר לאנגלית', contact: 'יצירת קשר',
-    eyebrow: 'עוצרים. בודקים. מחליטים.', title: 'משהו בהודעה מרגיש חשוד?', intro: 'בדקו סימני אזהרה בהודעה לפני שמשיבים, משתפים פרטים או פותחים קישור.',
+    skipToContent: 'דילוג לתוכן', headerTagline: 'עוד מבט לפני שפועלים', language: 'מעבר לאנגלית', contact: 'יצירת קשר',
+    title: 'קיבלתם הודעה ואתם לא בטוחים?', intro: 'הדביקו אותה כאן. נגיד לכם במילים פשוטות אם כדאי להיזהר.',
     scanTitle: 'בודקים את ההודעה המלאה', messageLabel: 'הודעה לבדיקה', placeholder: 'הדביקו כאן את ההודעה, כולל הקישורים…',
     inputHelp: 'כללו את הניסוח ואת הקישורים. הסירו פרטים אישיים שאין צורך לבדוק.', paste: 'הדבקה', clear: 'ניקוי',
     characterCount: 'תווים', overLimit: 'ההודעה ארוכה מ־10,000 תווים. קצרו אותה לפני הבדיקה.',
     pasteDenied: 'הלוח אינו זמין. אפשר להדביק או להקליד את ההודעה ידנית.',
     inspectLabel: 'בדיקה גם של דפי הקישורים', inspectHelp: 'לבחירתכם: השרת מבקר בקישורים ציבוריים נתמכים ובודק את תוכן הדפים. הבדיקה אורכת יותר זמן ועלולה להפעיל מעקב או קישור חד־פעמי ביעד. כבוי כברירת מחדל.',
     staticHelp: 'כברירת מחדל נבדקים רק ההודעה ומבנה הקישורים; דפי הקישורים אינם נפתחים.',
-    scanButton: 'בדיקת הודעה', checking: 'בודקים את ההודעה…', cancel: 'ביטול בדיקה', retry: 'בדיקה חוזרת',
-    resultLabel: 'הערכת ההודעה', resultContext: 'עבור ההודעה ששלחתם', nextStep: 'מה כדאי לעשות', reasonsTitle: 'הסיבות להערכה',
+    scanButton: 'בדקו את ההודעה', checking: 'בודקים את ההודעה…', cancel: 'ביטול בדיקה', retry: 'בדיקה חוזרת',
+    resultLabel: 'הערכת ההודעה', resultContext: 'עבור ההודעה ששלחתם', nextStep: 'מה לעשות עכשיו', reasonsTitle: 'איך זיהינו',
     noReasons: 'לא התקבלו סימני אזהרה מסוימים.', coverageTitle: 'כיסוי הבדיקה',
     complete: 'הבדיקות שהתבקשו הושלמו', partial: 'הבדיקה לא הושלמה במלואה', unavailable: 'הבדיקה אינה זמינה',
     partialHelp: 'חלק מהבדיקות שהתבקשו לא הסתיימו. סימני אזהרה שמופיעים למעלה עדיין תקפים.', unavailableHelp: 'אין מספיק בדיקות שהושלמו כדי להגיע למסקנה מהימנה.',
@@ -73,6 +74,7 @@ const translations = {
     errorTitle: 'לא ניתן היה לסיים את הבדיקה', linkDetails: 'פרטי הקישורים', noLinks: 'לא זוהו קישורים.', unknownHost: 'קישור לא מזוהה',
     linkAssessment: 'הערכת הקישור', normalizedDestination: 'היעד שנשלח', finalDestination: 'היעד הסופי',
     maskedHelp: 'חלקים פרטיים בכתובת מוסתרים. שמות המתחם מוצגים כטקסט, כדי לבדוק אותם בלי לפתוח דף.',
+    verdicts: { phishing: 'זו כנראה הונאה.', suspicious: 'יש בהודעה סימני אזהרה.', no_clear_signs: 'לא מצאנו סימני אזהרה ברורים.', unknown: 'לא הצלחנו להעריך את ההודעה.' },
     assessments: { phishing: 'אזהרת פישינג', suspicious: 'סימנים חשודים', no_clear_signs: 'לא נמצאו סימני אזהרה ברורים', unknown: 'לא ניתן להעריך' },
     descriptions: { phishing: 'נמצאו סימני אזהרה חזקים. עצרו לפני פעולה בעקבות ההודעה.', suspicious: 'בהודעה יש סימני אזהרה שכדאי לבדוק מקרוב.', no_clear_signs: 'בבדיקות שהושלמו לא נמצאו סימני אזהרה ברורים.', unknown: 'המידע הזמין אינו מספיק להערכה מהימנה.' },
     actions: {

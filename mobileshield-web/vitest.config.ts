@@ -15,6 +15,7 @@ export default defineConfig({
     // Node 26's native storage getter otherwise hides jsdom's isolated storage.
     execArgv: ['--no-experimental-webstorage'],
     setupFiles: ['./tests/setup.ts'],
+    exclude: ['e2e/**', 'node_modules/**'],
     clearMocks: true,
     restoreMocks: true,
   },

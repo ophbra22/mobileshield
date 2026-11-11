@@ -80,7 +80,7 @@ describe('message form with the real request lifecycle', () => {
     expect(screen.getByRole('textbox')).toHaveValue('manual message');
     fireEvent.change(screen.getByRole('textbox'),{target:{value:'updated manually'}});
     fireEvent.click(screen.getByRole('button',{name:'Check message'}));
-    await screen.findByRole('heading',{name:'Suspicious signs'});
+    await screen.findByRole('heading',{name:'This message has warning signs.'});
     expect(JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string)).toEqual({text:'updated manually',inspect_links:false});
     expect(screen.queryByText(/SECRET/)).not.toBeInTheDocument();
   });
@@ -90,9 +90,9 @@ describe('message form with the real request lifecycle', () => {
     expect(document.getElementById('message-count')).toHaveTextContent(`${Array.from(text).length} / 10,000 characters`);
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button',{name:'Check message'}));
-    await screen.findByRole('heading',{name:'Suspicious signs'});
+    await screen.findByRole('heading',{name:'This message has warning signs.'});
     expect(JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string)).toEqual({text,inspect_links:true});
-    expect(within(screen.getByRole('region', {name:'Suspicious signs'})).queryByText(text)).not.toBeInTheDocument(); // No secret-bearing message echo in evidence.
+    expect(within(screen.getByRole('region', {name:'This message has warning signs.'})).queryByText(text)).not.toBeInTheDocument(); // No secret-bearing message echo in evidence.
   });
   it('rejects over-limit text without truncation', () => {
     show(); const text = '🙂'.repeat(10001); fireEvent.change(screen.getByRole('textbox'),{target:{value:text}});
@@ -110,7 +110,7 @@ describe('message form with the real request lifecycle', () => {
     expect(screen.getByRole('textbox')).toHaveValue('original message');
     expect(screen.getByRole('status')).toHaveTextContent('בודקים את ההודעה…');
     await act(async()=>pending.resolve(response()));
-    await screen.findByRole('heading',{name:'סימנים חשודים'}); expect(fetch).toHaveBeenCalledTimes(1);
+    await screen.findByRole('heading',{name:'יש בהודעה סימני אזהרה.'}); expect(fetch).toHaveBeenCalledTimes(1);
   });
   it.each(['edit','inspection','clear','cancel'])('invalidates pending results on %s',async(change)=>{
     const pending=deferred(); vi.mocked(fetch).mockReturnValue(pending.promise); show();
@@ -121,21 +121,21 @@ describe('message form with the real request lifecycle', () => {
     if(change==='clear') fireEvent.click(screen.getByRole('button',{name:'Clear'}));
     if(change==='cancel') fireEvent.click(screen.getByRole('button',{name:'Cancel check'}));
     await act(async()=>pending.resolve(response()));
-    expect(screen.queryByRole('heading',{name:'Suspicious signs'})).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading',{name:'This message has warning signs.'})).not.toBeInTheDocument();
     expect(screen.queryByText('Checking message…')).not.toBeInTheDocument();
     expect(screen.getByRole('textbox')).toHaveValue(change==='clear'?'':change==='edit'?'new draft':'original');
   });
   it('clears completed evidence with the draft',async()=>{
     show(); fireEvent.change(screen.getByRole('textbox'),{target:{value:'test'}});
-    fireEvent.click(screen.getByRole('button',{name:'Check message'})); await screen.findByRole('heading',{name:'Suspicious signs'});
+    fireEvent.click(screen.getByRole('button',{name:'Check message'})); await screen.findByRole('heading',{name:'This message has warning signs.'});
     fireEvent.click(screen.getByRole('button',{name:'Clear'}));
-    expect(screen.getByRole('textbox')).toHaveValue(''); expect(screen.queryByRole('heading',{name:'Suspicious signs'})).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox')).toHaveValue(''); expect(screen.queryByRole('heading',{name:'This message has warning signs.'})).not.toBeInTheDocument();
   });
   it('retries the failed snapshot explicitly and clears retry on an edit',async()=>{
     vi.mocked(fetch).mockResolvedValueOnce(new Response('{}',{status:503})).mockResolvedValueOnce(response()); show();
     fireEvent.change(screen.getByRole('textbox'),{target:{value:'failed snapshot'}});
     fireEvent.click(screen.getByRole('button',{name:'Check message'})); await screen.findByRole('button',{name:'Retry check'});
-    fireEvent.click(screen.getByRole('button',{name:'Retry check'})); await screen.findByRole('heading',{name:'Suspicious signs'});
+    fireEvent.click(screen.getByRole('button',{name:'Retry check'})); await screen.findByRole('heading',{name:'This message has warning signs.'});
     expect(JSON.parse(vi.mocked(fetch).mock.calls[1][1]!.body as string)).toEqual({text:'failed snapshot',inspect_links:false});
     fireEvent.change(screen.getByRole('textbox'),{target:{value:'edited'}});
     expect(screen.queryByRole('button',{name:'Retry check'})).not.toBeInTheDocument();
@@ -160,8 +160,12 @@ describe('message form with the real request lifecycle', () => {
   });
   it('offers keyboard accessible language and contact/social footer affordances',async()=>{
     const user=userEvent.setup(); show(); await user.tab();
+    expect(screen.getByRole('link',{name:'Skip to content'})).toHaveFocus();
+    expect(screen.getByRole('link',{name:'Skip to content'})).toHaveAttribute('href','#main-content');
+    await user.tab();
     expect(screen.getByRole('button',{name:'Switch to Hebrew'})).toHaveFocus();
     expect(screen.getByRole('link',{name:'Contact us'})).toHaveAttribute('href','mailto:MobileShield@gmail.com');
     expect(screen.getByRole('link',{name:'LinkedIn'})).toHaveAttribute('rel','noopener noreferrer');
+    expect(screen.getByRole('link',{name:'GitHub'})).toHaveAttribute('href','https://github.com/ophbra22/mobileshield');
   });
 });

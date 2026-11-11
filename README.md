@@ -11,9 +11,9 @@
 ![Tests](https://img.shields.io/badge/tests-965%20passing-2ea44f)
 
 <p align="center">
-  <img src="docs/images/home-he.png" alt="MobileShield home screen in Hebrew" width="42%">
-  <img src="docs/images/result-phishing-en.png" alt="A phishing assessment with reasons and next steps" width="42%">
-  <img src="docs/images/link-details-mobile-en.png" alt="Per-link evidence on mobile" width="13%">
+  <img src="docs/images/result-desktop-he.png" alt="A scam message gets the verdict 'This is probably a scam' with reasons and next steps" width="62%">
+  &nbsp;
+  <img src="docs/images/result-mobile-he.png" alt="The same result on a phone" width="22%">
 </p>
 
 ---
@@ -29,6 +29,7 @@ Most phishing in Israel now arrives as a short text message ("your package is he
 - **Brand and look-alike detection.** A single registry of 35 brands and products (global services, Israeli banks, Israel Post) holds their official domains and how they are named in English and Hebrew. It catches brand names used as hostname tokens on foreign domains (`paypal-login.example`), homoglyphs (`paypa1`, `rnicrosoft`) and swapped letters (`mircosoft`). Matching is token-based, so `purchase.com` is not "Chase" and "20% discount" is not Discount Bank.
 - **Optional live page inspection.** With the user's opt-in, the server visits the link and reports credential/payment forms, page-title brand claims, redirect chains and TLS certificate problems.
 - **Explainable results.** Every verdict (`phishing` / `suspicious` / `no_clear_signs` / `unknown`) comes with typed reasons, per-link evidence, recommended actions and an honest coverage status. A check that could not run is never reported as "safe".
+- **Readable by anyone.** Large type, one plain-language verdict sentence, full-width controls and 44px+ touch targets, designed with older users in mind. Hebrew RTL and English LTR, keyboard navigation with a skip link, screen-reader announcements, reduced-motion and forced-colors support. Verdict colors differ in lightness as well as hue, so they stay distinguishable for color-blind users.
 - **Privacy by design.** No database dependency on the scan path, nothing is stored, responses are `Cache-Control: no-store` and request logs contain only route, status, duration and a random request ID.
 
 ## Security engineering highlights
@@ -99,15 +100,9 @@ curl -s -X POST http://localhost:8000/v1/analyze-message \
 ## Tech stack
 
 - **Backend:** Python 3.11, FastAPI, Pydantic v2 (strict contracts), SQLAlchemy 2, PostgreSQL, `tldextract`, `idna`
-- To demo the UI without contacting any real site, run the synthetic fixture server instead. It simulates hosts such as `paypal-login.attacker.example`:
-
-```bash
-DATABASE_URL=sqlite:// uvicorn tests.fixture_server:app --port 8000
-```
-
-**Frontend:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS 4, bilingual RTL/LTR UI with an accessibility focus
-- **Testing:** pytest (835 hermetic tests that make no network or DNS calls), Vitest + Testing Library (130 tests), Ruff
-- **Infrastructure:** Docker, Docker Compose, GitHub Actions (tests, lint, type checks, build and dependency audits)
+- **Frontend:** Next.js 15 (App Router), React 19, TypeScript, plain CSS with a self-hosted Heebo font (no third-party requests)
+- **Testing:** pytest (835 hermetic tests that make no network or DNS calls), Vitest + Testing Library (130 tests), Playwright cross-browser tests on Chromium, Firefox and WebKit at phone, tablet and desktop sizes, Ruff
+- **Infrastructure:** Docker, Docker Compose, GitHub Actions (tests, lint, type checks, build, cross-browser runs with screenshots, and dependency audits)
 
 ## Getting started
 
@@ -134,6 +129,12 @@ export DATABASE_URL=sqlite:///./mobileshield.db
 uvicorn app.main:app --reload --port 8000
 ```
 
+To demo the UI without contacting any real site, run the synthetic fixture server instead. It simulates hosts such as `paypal-login.attacker.example`:
+
+```bash
+DATABASE_URL=sqlite:// uvicorn tests.fixture_server:app --port 8000
+```
+
 **Frontend:**
 
 ```bash
@@ -154,6 +155,11 @@ cd mobileshield-web
 npm test            # Vitest
 npm run typecheck   # tsc --noEmit
 npm run lint
+
+# Cross-browser (Chromium, Firefox, WebKit; phone, tablet and desktop)
+npx playwright install chromium firefox webkit
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8100 npm run build
+npm run e2e
 ```
 
 ## Project structure

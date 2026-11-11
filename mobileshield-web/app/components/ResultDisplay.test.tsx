@@ -101,7 +101,7 @@ describe('validated evidence presentation', () => {
     expect(getTranslations('en').reasons.certificate_mismatch).toBe('The destination certificate could not be verified.');
     expect(getTranslations('he').reasons.certificate_mismatch).toBe('לא ניתן היה לאמת את תעודת האבטחה של היעד.');
   });
-  it.each([['phishing', 'Phishing warning'], ['suspicious', 'Suspicious signs'], ['no_clear_signs', 'No clear warning signs'], ['unknown', 'Unable to assess']] as const)('renders %s without a safe fallback', (assessment, title) => {
+  it.each([['phishing', 'This is probably a scam.'], ['suspicious', 'This message has warning signs.'], ['no_clear_signs', 'No clear warning signs found.'], ['unknown', 'We could not assess this message.']] as const)('renders %s without a safe fallback', (assessment, title) => {
     show(state(assessment));
     expect(screen.getByRole('heading', { name: title })).toBeVisible();
     expect(screen.queryByText(/Safe Link|benign|confidence|\d+%/i)).not.toBeInTheDocument();
@@ -116,7 +116,7 @@ describe('validated evidence presentation', () => {
   });
   it.each(['partial', 'unavailable'])('separates %s coverage from warning assessment', (coverage) => {
     show(state('phishing', coverage));
-    expect(screen.getByRole('heading', { name: 'Phishing warning' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'This is probably a scam.' })).toBeVisible();
     expect(screen.getByText(coverage === 'partial' ? 'Analysis incomplete' : 'Analysis unavailable')).toBeVisible();
   });
   it('isolates nonclickable domains and masks all private URL parts even in expanded evidence', async () => {
@@ -143,7 +143,7 @@ describe('validated evidence presentation', () => {
     show(state());
     expect(screen.getByText('The message asks for passwords or one-time codes.')).toBeVisible();
     fireEvent.click(screen.getByText('Language'));
-    expect(screen.getByRole('heading', { name: 'סימנים חשודים' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'יש בהודעה סימני אזהרה.' })).toBeVisible();
     expect(screen.getByText('ההודעה מבקשת סיסמאות או קודים חד־פעמיים.')).toBeVisible();
     expect(screen.getByText('אל תשתפו סיסמאות, פרטי תשלום או קודים חד־פעמיים.')).toBeVisible();
   });
@@ -156,7 +156,7 @@ describe('validated evidence presentation', () => {
     s.result.recommended_actions = ['avoid_interaction', 'verify_independently', 'do_not_share_secrets', 'consider_link_inspection', 'retry_later'];
     show(s);
     const t = getTranslations(language);
-    const region = screen.getByRole('region', { name: t.assessments.suspicious });
+    const region = screen.getByRole('region', { name: t.verdicts.suspicious });
     for (const code of codes)
       expect(within(region).getAllByText(t.reasons[code as keyof typeof t.reasons])[0]).toBeVisible();
     for (const action of s.result.recommended_actions)
@@ -224,7 +224,7 @@ it.each(['en', 'he'] as const)('shows a completed ordinary message in %s', langu
   s.result.recommended_actions = [];
   show(s);
   const t = getTranslations(language);
-  expect(screen.getByRole('heading', { name: t.assessments.no_clear_signs })).toBeVisible();
+  expect(screen.getByRole('heading', { name: t.verdicts.no_clear_signs })).toBeVisible();
   expect(screen.getByText(t.complete)).toBeVisible();
   expect(screen.getByText(t.noGuarantee)).toBeVisible();
   expect(screen.getByText(t.noLinks)).toBeVisible();
@@ -237,7 +237,7 @@ it.each(['en', 'he'] as const)('preserves unavailable analysis with multiple lim
   s.result.limitations = ['unsupported_text', 'inspection_failed'];
   show(s);
   const t = getTranslations(language);
-  expect(screen.getByRole('heading', { name: t.assessments.unknown })).toBeVisible();
+  expect(screen.getByRole('heading', { name: t.verdicts.unknown })).toBeVisible();
   expect(screen.getByText(t.unavailable)).toBeVisible();
   expect(screen.getByText(t.unavailableHelp)).toBeVisible();
 });
@@ -249,7 +249,7 @@ it.each(['en', 'he'] as const)('preserves partial warning and network error copy
   s.result.limitations = ['unsupported_text', 'inspection_disabled'];
   const view = render(<LanguageProvider><ResultDisplay state={s} onCancel={vi.fn()} onRetry={vi.fn()} /></LanguageProvider>);
   const t = getTranslations(language);
-  expect(screen.getByRole('heading', { name: t.assessments.suspicious })).toBeVisible();
+  expect(screen.getByRole('heading', { name: t.verdicts.suspicious })).toBeVisible();
   expect(screen.getByText(t.partialHelp)).toBeVisible();
   expect(screen.getByText(t.reasons.credential_request)).toBeVisible();
   view.rerender(<LanguageProvider><ResultDisplay state={{ sequenceId: 2, status: 'error', submittedText: 'private', inspectLinks: false, result: null, error: new AnalysisError('network_error') }} onCancel={vi.fn()} onRetry={vi.fn()} /></LanguageProvider>);
