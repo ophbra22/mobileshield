@@ -24,7 +24,7 @@ describe('message form with the real request lifecycle', () => {
     const input = screen.getByRole('textbox');
     expect(input).toHaveValue('');
     expect(input).toHaveAttribute('dir', language === 'he' ? 'rtl' : 'ltr');
-    fireEvent.click(screen.getByRole('button', { name: language === 'he' ? 'מעבר לאנגלית' : 'Switch to Hebrew' }));
+    fireEvent.click(screen.getByRole('button', { name: language === 'he' ? /מעבר לאנגלית/ : /Switch to Hebrew/ }));
     expect(input).toHaveValue('');
     expect(input).toHaveAttribute('dir', language === 'he' ? 'ltr' : 'rtl');
   });
@@ -35,7 +35,7 @@ describe('message form with the real request lifecycle', () => {
     fireEvent.change(input, { target: { value: whitespace } });
     expect(input).toHaveValue(whitespace);
     expect(input).toHaveAttribute('dir', language === 'he' ? 'rtl' : 'ltr');
-    fireEvent.click(screen.getByRole('button', { name: language === 'he' ? 'מעבר לאנגלית' : 'Switch to Hebrew' }));
+    fireEvent.click(screen.getByRole('button', { name: language === 'he' ? /מעבר לאנגלית/ : /Switch to Hebrew/ }));
     expect(input).toHaveValue(whitespace);
     expect(input).toHaveAttribute('dir', language === 'he' ? 'ltr' : 'rtl');
     expect(fetch).not.toHaveBeenCalled();
@@ -48,7 +48,7 @@ describe('message form with the real request lifecycle', () => {
     const input = screen.getByRole('textbox');
     fireEvent.change(input, { target: { value: text } });
     expect(input).toHaveAttribute('dir', 'auto');
-    fireEvent.click(screen.getByRole('button', { name: language === 'he' ? 'מעבר לאנגלית' : 'Switch to Hebrew' }));
+    fireEvent.click(screen.getByRole('button', { name: language === 'he' ? /מעבר לאנגלית/ : /Switch to Hebrew/ }));
     expect(input).toHaveValue(text);
     expect(input).toHaveAttribute('dir', 'auto');
     fireEvent.click(screen.getByRole('button', { name: language === 'he' ? 'Clear' : 'ניקוי' }));
@@ -105,7 +105,7 @@ describe('message form with the real request lifecycle', () => {
     fireEvent.change(screen.getByRole('textbox'),{target:{value:'original message'}});
     fireEvent.click(screen.getByRole('button',{name:'Check message'}));
     expect(screen.getByRole('status')).toHaveTextContent('Checking message…');
-    fireEvent.click(screen.getByRole('button',{name:'Switch to Hebrew'}));
+    fireEvent.click(screen.getByRole('button',{name:/Switch to Hebrew/}));
     expect(document.documentElement).toHaveAttribute('lang','he'); expect(document.documentElement).toHaveAttribute('dir','rtl');
     expect(screen.getByRole('textbox')).toHaveValue('original message');
     expect(screen.getByRole('status')).toHaveTextContent('בודקים את ההודעה…');
@@ -163,9 +163,14 @@ describe('message form with the real request lifecycle', () => {
     expect(screen.getByRole('link',{name:'Skip to content'})).toHaveFocus();
     expect(screen.getByRole('link',{name:'Skip to content'})).toHaveAttribute('href','#main-content');
     await user.tab();
-    expect(screen.getByRole('button',{name:'Switch to Hebrew'})).toHaveFocus();
+    expect(screen.getByRole('link',{name:/^MobileShield/})).toHaveAttribute('href','/');
+    await user.tab();
+    expect(screen.getByRole('button',{name:/Switch to Hebrew/})).toHaveFocus();
     expect(screen.getByRole('link',{name:'Contact us'})).toHaveAttribute('href','mailto:MobileShield@gmail.com');
     expect(screen.getByRole('link',{name:'LinkedIn'})).toHaveAttribute('rel','noopener noreferrer');
     expect(screen.getByRole('link',{name:'GitHub'})).toHaveAttribute('href','https://github.com/ophbra22/mobileshield');
+    for (const [name, href] of [['Privacy policy','/privacy'],['Cookies and storage','/cookies'],['Terms of use','/terms'],['Accessibility statement','/accessibility']]) {
+      expect(screen.getByRole('link',{name})).toHaveAttribute('href',href);
+    }
   });
 });

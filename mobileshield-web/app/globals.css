@@ -6,7 +6,8 @@
   --brand-dark: #052C3F;
   --muted: #3C5260;
   --soft: #E6F0F4;
-  --line: #B8C9D2;
+  --line: #B8C9D2;          /* decorative dividers only */
+  --control-line: #5E7A89;  /* 4.5:1 on white: borders of buttons and fields */
   --surface: #FFFFFF;
   /* Verdict colors: each passes 4.5:1 with white text and differs in
      lightness as well as hue, so they stay distinguishable without color vision. */
@@ -56,7 +57,8 @@ a:hover { color: var(--brand-dark); }
   padding-inline: max(28px, env(safe-area-inset-left)) max(28px, env(safe-area-inset-right));
 }
 .site-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 32px 0; }
-.brand { display: flex; align-items: center; gap: 14px; min-width: 0; color: var(--brand); }
+.brand { display: flex; align-items: center; gap: 14px; min-width: 0; min-height: 48px; color: var(--brand); text-decoration: none; }
+.brand > div { display: flex; flex-direction: column; }
 .brand-mark { flex: none; }
 .brand-name { font-size: 26px; font-weight: 800; line-height: 1.1; }
 .brand-tagline { font-size: 15px; color: var(--muted); margin-block-start: 2px; }
@@ -78,7 +80,7 @@ a:hover { color: var(--brand-dark); }
 .draft-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .quiet-button {
   display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px;
-  border: 2px solid var(--line); border-radius: var(--radius-sm); background: var(--surface);
+  border: 2px solid var(--control-line); border-radius: var(--radius-sm); background: var(--surface);
   color: var(--brand); font-size: 18px; font-weight: 700;
 }
 .quiet-button:hover { background: var(--soft); border-color: var(--brand); }
@@ -104,7 +106,7 @@ a:hover { color: var(--brand-dark); }
 }
 .primary-button { border: 0; background: var(--brand); color: #fff; }
 .primary-button:hover:not(:disabled) { background: var(--brand-dark); }
-.primary-button:disabled { background: #D5DEE3; color: #3C5260; }
+.primary-button:disabled { background: var(--surface); color: var(--muted); border: 2px dashed var(--control-line); }
 .submit-button { width: 100%; min-height: 72px; font-size: 26px; font-weight: 800; }
 .secondary-button { border: 2px solid var(--brand); background: var(--surface); color: var(--brand); }
 .secondary-button:hover { background: var(--soft); }
@@ -167,9 +169,46 @@ a:hover { color: var(--brand-dark); }
   padding-block: 28px max(36px, env(safe-area-inset-bottom)); border-block-start: 2px solid var(--soft);
   font-size: 17px; color: var(--muted);
 }
-.site-footer p { flex: 1 1 300px; }
-.site-footer nav { display: flex; flex-wrap: wrap; gap: 4px 20px; }
-.site-footer a { display: inline-flex; align-items: center; min-height: 48px; font-weight: 700; }
+.site-footer p { flex: 1 1 100%; }
+.site-footer nav { display: flex; flex-wrap: wrap; gap: 0 20px; }
+.footer-legal { flex: 1 1 100%; }
+.site-footer a, .link-button { display: inline-flex; align-items: center; min-height: 48px; font-weight: 700; }
+.link-button { padding: 0; border: 0; background: none; color: var(--brand); font-size: inherit; text-decoration: underline; text-underline-offset: 4px; }
+.link-button:hover { color: var(--brand-dark); }
+
+/* Storage notice: non-blocking, fixed to the bottom, equal-weight choices. */
+.storage-notice {
+  position: fixed; inset-inline: 0; bottom: 0; z-index: 20;
+  background: var(--surface); border-block-start: 3px solid var(--brand);
+  box-shadow: 0 -6px 24px rgba(16, 42, 54, 0.12);
+  padding: 20px max(20px, env(safe-area-inset-left)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-right));
+}
+.storage-notice-inner { max-width: 860px; margin-inline: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px; }
+.storage-notice-text { flex: 1 1 360px; }
+.storage-notice h2 { font-size: 22px; font-weight: 800; margin-block-end: 4px; }
+.storage-notice p { font-size: 18px; line-height: 1.5; }
+.storage-notice-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.storage-notice-actions button { min-width: 150px; }
+body.has-storage-notice { padding-block-end: 220px; }
+
+/* Legal pages. */
+.legal { gap: 0; max-width: 72ch; }
+.back-link { align-self: flex-start; display: inline-flex; align-items: center; min-height: 48px; font-size: 18px; font-weight: 700; }
+.legal h1 { margin-block: 12px 8px; font-size: clamp(32px, 5vw, 42px); font-weight: 800; line-height: 1.2; }
+.legal-updated { font-size: 17px; color: var(--muted); }
+.legal-intro { margin-block: 20px 8px; font-size: 21px; line-height: 1.6; }
+.legal-section { margin-block-start: 28px; }
+.legal-section h2 { font-size: 26px; font-weight: 800; margin-block-end: 10px; }
+.legal-section p, .legal-section li { font-size: 19px; line-height: 1.7; }
+.legal-section ul { margin: 8px 0 0; padding-inline-start: 26px; }
+.legal-section li + li { margin-block-start: 8px; }
+.legal-section p + p, .legal-section p + ul, .legal-section ul + p, .legal-section p + .table-scroll { margin-block-start: 12px; }
+.table-scroll { overflow-x: auto; border: 2px solid var(--line); border-radius: var(--radius-sm); }
+.table-scroll table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 17px; line-height: 1.5; }
+.table-scroll th, .table-scroll td { padding: 12px 14px; text-align: start; vertical-align: top; border-block-end: 1px solid var(--line); }
+.table-scroll thead th { background: var(--soft); font-weight: 800; }
+.table-scroll tbody tr:last-child > * { border-block-end: 0; }
+.table-scroll code { font-size: 16px; }
 
 /* Phones: same hierarchy, tighter spacing, full-width controls. */
 @media (max-width: 600px) {
@@ -197,6 +236,10 @@ a:hover { color: var(--brand-dark); }
   .action-card { padding: 20px; }
   .marked-list li { gap: 10px; }
   .link-card { padding: 16px; }
+  .storage-notice-actions { flex: 1 1 100%; }
+  .storage-notice-actions button { flex: 1 1 0; min-width: 0; }
+  body.has-storage-notice { padding-block-end: 300px; }
+  .legal-section p, .legal-section li { font-size: 18px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -207,4 +250,5 @@ a:hover { color: var(--brand-dark); }
 @media (forced-colors: active) {
   .verdict-band { border-block-end: 3px solid CanvasText; }
   .primary-button, .quiet-button, .language-button, .secondary-button { border: 2px solid ButtonText; }
+  .storage-notice { border: 3px solid CanvasText; }
 }
