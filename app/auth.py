@@ -59,14 +59,27 @@ def require_api_key(x_api_key: str | None = Header(default=None, alias='X-API-Ke
     if not x_api_key:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Missing X-API-Key header.')
 
-    api_key = db.execute(select(ApiKey).where(ApiKey.key_prefix == x_api_key[:8])).scalar_one_or_none()
-    if not api_key or not api_key.is_active or api_key.revoked_at:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid API key.')
-    key_hash_candidate, _, _ = hash_api_key(x_api_key)
-    if not constant_time_compare(key_hash_candidate, api_key.key_hash):
+    api_key = _find_active_api_key(db, x_api_key)
+    if api_key is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid API key.')
 
     _enforce_rate_limit(db, api_key)
+    return api_key
+
+
+def _find_active_api_key(db: Session, raw_key: str) -> ApiKey | None:
+    """Look a key up by its keyed hash.
+
+    Every generated key shares the public ``ms_live_`` prefix, so the prefix is
+    display metadata only. The HMAC digest is unique and indexed; the database
+    match is re-checked in constant time before the key is trusted.
+    """
+    key_hash_candidate, _, _ = hash_api_key(raw_key)
+    api_key = db.execute(select(ApiKey).where(ApiKey.key_hash == key_hash_candidate)).scalar_one_or_none()
+    if api_key is None or not api_key.is_active or api_key.revoked_at:
+        return None
+    if not constant_time_compare(key_hash_candidate, api_key.key_hash):
+        return None
     return api_key
 
 
@@ -116,12 +129,10 @@ def resolve_identity(
     # Prefer API key
     api_key_header = request.headers.get('X-API-Key')
     if api_key_header:
-        api_key = db.execute(select(ApiKey).where(ApiKey.key_prefix == api_key_header[:8])).scalar_one_or_none()
-        if api_key and api_key.is_active and not api_key.revoked_at:
-            key_hash_candidate, _, _ = hash_api_key(api_key_header)
-            if constant_time_compare(key_hash_candidate, api_key.key_hash):
-                _enforce_rate_limit(db, api_key)
-                return None, api_key
+        api_key = _find_active_api_key(db, api_key_header)
+        if api_key is not None:
+            _enforce_rate_limit(db, api_key)
+            return None, api_key
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid API key.')
     # Else check JWT
     auth = request.headers.get('Authorization')

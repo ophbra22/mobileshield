@@ -7,6 +7,7 @@ import unicodedata
 from typing import Literal
 
 import idna
+from app.brand import KNOWN_BRAND_IDS as KNOWN_BRANDS
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
 
 MAX_TEXT_CODEPOINTS = 10_000
@@ -36,11 +37,6 @@ for _code in (
     REASON_PARAM_KEYS[_code] = frozenset({'display_host'})
 for _code in ('brand_destination_mismatch', 'lookalike_host'):
     REASON_PARAM_KEYS[_code] = frozenset({'display_host', 'expected_host', 'brand'})
-KNOWN_BRANDS = frozenset({
-    'apple', 'appleid', 'google', 'microsoft', 'paypal', 'whatsapp', 'telegram',
-    'bank', 'visa', 'mastercard', 'amex', 'office', 'outlook', 'icloud',
-    'leumi', 'hapoalim', 'discount', 'mizrahi', 'beinleumi', 'onezero', 'pepper',
-})
 
 
 def validate_message_text(text: str) -> str:

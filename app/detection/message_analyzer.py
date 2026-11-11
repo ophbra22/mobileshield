@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 import unicodedata
 
-from app.brand import BRAND_KEYWORDS, PROTECTED_BRANDS, is_official_domain, official_domains_for_brand
+from app.brand import claimed_brands, is_official_domain, official_domains_for_brand
 from app.message_models import AssessmentSummary, LinkResult, ParsedMessage, Reason, MAX_REASONS
 
 # Bounded request families: imperative gender/number, infinitive and the
@@ -128,9 +128,9 @@ def text_evidence(parsed: ParsedMessage) -> list[Reason]:
         reasons.append(Reason(code='urgency', strength='strong' if _THREAT.search(prose) else 'medium', source='message'))
     # Compare explicit named claims using the same brand-family roots as URL
     # evidence. Generic bank vocabulary and brand words inside URLs are not claims.
-    for brand in sorted(set(BRAND_KEYWORDS) | set(PROTECTED_BRANDS)):
+    for brand in sorted(claimed_brands(prose)):
         roots = official_domains_for_brand(brand)
-        if not roots or not re.search(r'(?<!\w)' + re.escape(brand) + r'(?!\w)', prose, re.I):
+        if not roots:
             continue
         for link in parsed.links:
             if link.display_host and link.canonical_url and not any(

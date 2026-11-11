@@ -18,8 +18,7 @@ from app.detection.server_analyzer import analyze_server
 from app.detection.url_normalizer import normalize_url
 from app.detection.explanation_builder import build_reasons
 from app.reputation import BLOCKLISTED_DOMAINS, get_or_compute_domain_reputation
-from app.brand import (BRAND_KEYWORDS, GENERIC_BRAND_TERMS, PROTECTED_BRANDS,
-                       is_official_domain, official_domains_for_brand)
+from app.brand import claimed_brands, is_official_domain, official_domains_for_brand
 from app.detection.network_policy import canonical_target, DestinationBlocked
 from app.detection.safe_transport import SafeTransport, UrlObservation
 from app.message_models import LinkCandidate, LinkResult, LinkTechnical, Reason, REASON_PARAM_KEYS
@@ -250,10 +249,7 @@ def collect_url_evidence(candidate: LinkCandidate, observation: UrlObservation |
         if content.payment_form:
             add('payment_form', 'strong', 'inspection', final.hostname)
         # A real page claim can reveal impersonation even on a neutral hostname.
-        title = content.brand_claim or ''
-        for brand in sorted(set(BRAND_KEYWORDS) | set(PROTECTED_BRANDS)):
-            if brand in GENERIC_BRAND_TERMS or brand not in title:
-                continue
+        for brand in sorted(claimed_brands(content.brand_claim or '')):
             official = official_domains_for_brand(brand)
             if not any(root and is_official_domain(final.hostname, root) for root in official):
                 add('brand_destination_mismatch', 'strong', 'inspection', final.hostname)

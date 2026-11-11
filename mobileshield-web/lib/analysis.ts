@@ -50,7 +50,8 @@ const actions = ['avoid_interaction', 'verify_independently', 'do_not_share_secr
 const reasonCodes: readonly ReasonCode[] = ['credential_request', 'payment_request', 'urgency', 'brand_destination_mismatch', 'lookalike_host', 'suspicious_obfuscation', 'credential_form', 'payment_form', 'local_blocklist_hit', 'certificate_mismatch', 'unsupported_text', 'invalid_link', 'inspection_disabled', 'inspection_failed', 'destination_blocked', 'body_limit', 'deadline_exceeded'];
 const hostFactCodes = ['suspicious_obfuscation', 'credential_form', 'payment_form', 'local_blocklist_hit', 'certificate_mismatch', 'invalid_link', 'destination_blocked'];
 const brandFactCodes = ['brand_destination_mismatch', 'lookalike_host'];
-const brands = ['apple', 'appleid', 'google', 'microsoft', 'paypal', 'whatsapp', 'telegram', 'bank', 'visa', 'mastercard', 'amex', 'office', 'outlook', 'icloud', 'leumi', 'hapoalim', 'discount', 'mizrahi', 'beinleumi', 'onezero', 'pepper'];
+/** Mirrors app/brand.py KNOWN_BRAND_IDS (checked by tests/test_brand_registry.py). */
+const brands = ['amazon', 'amex', 'apple', 'appleid', 'bank', 'bankofamerica', 'beinleumi', 'binance', 'capitalone', 'cashapp', 'chase', 'citibank', 'discount', 'facebook', 'google', 'hapoalim', 'hsbc', 'icloud', 'instagram', 'israelpost', 'leumi', 'mastercard', 'meta', 'microsoft', 'mizrahi', 'office', 'onezero', 'outlook', 'paypal', 'pepper', 'stripe', 'telegram', 'venmo', 'visa', 'wellsfargo', 'whatsapp'];
 
 function invalid(): never { throw new AnalysisError('invalid_response'); }
 function record(value: unknown, keys: readonly string[]): Record<string, unknown> {

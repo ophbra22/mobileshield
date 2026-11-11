@@ -54,7 +54,9 @@ def hash_api_key(raw_key: str) -> tuple[str, str, str]:
     """Return (hash, prefix, last4). Hash uses HMAC-SHA256 with SERVER_KEY."""
     server_key = settings.server_key.encode()
     digest = hmac.new(server_key, raw_key.encode(), hashlib.sha256).hexdigest()
-    prefix = raw_key[:8]
+    # Display-only: 12 characters include 4 random characters after the shared
+    # ``ms_live_`` marker. Lookups always use the digest, never the prefix.
+    prefix = raw_key[:12]
     last4 = raw_key[-4:]
     return digest, prefix, last4
 
