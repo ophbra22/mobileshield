@@ -19,9 +19,14 @@ _HEBREW_REQUESTS = (
     r'העבר|העברו|העבירי|העבירו|להעביר|תעביר(?:י|ו)?',
     r'אשר(?:י|ו)?|לאשר|תאשר(?:י|ו)?',
     r'צריך|צריכה|צריכים|צריכות',
+    # Common in delivery, bank and tax smishing: "יש להסדיר", "עדכנו את פרטי האשראי".
+    r'הסדר|הסדיר(?:י|ו)|להסדיר|תסדיר(?:י|ו)?',
+    r'עדכן|עדכנ(?:י|ו)|לעדכן|תעדכן|תעדכנ(?:י|ו)',
+    r'השלם|השלימ(?:י|ו)|להשלים|תשלים(?:י|ו)?',
+    r'אמת|אמת(?:י|ו)|לאמת|תאמת(?:י|ו)?',
 )
 _REQUEST = re.compile(
-    r'\b(?:send|share|give|enter|provide|confirm|submit|reply|pay|transfer|needs?)\b|'
+    r'\b(?:send|share|give|enter|provide|confirm|submit|reply|pay|transfer|needs?|settle|update|verify)\b|'
     r'(?<!\w)(?:' + '|'.join(_HEBREW_REQUESTS) + r')(?!\w)', re.I,
 )
 _SECRET = re.compile(
@@ -29,7 +34,11 @@ _SECRET = re.compile(
     r'(?<!\w)ו?(?:ה?סיסמ(?:ה|א|אות|ות)|ה?קוד(?:י|ים)? (?:ה)?אימות|'
     r'ה?קוד(?:ים)? חד פעמי(?:ים)?)(?!\w)', re.I,
 )
-_PAYMENT = re.compile(r'\b(?:payment|money|fee|bank details|card details|credit card|card number|cvv)\b|(?:תשלום|כסף|פרטי אשראי|פרטי כרטיס|דמי משלוח|כרטיס האשראי)', re.I)
+_PAYMENT = re.compile(
+    r'\b(?:payment|money|fees?|bank details|card details|credit card|card number|cvv|customs|fine|'
+    r'outstanding balance|billing details)\b|'
+    r'(?:תשלום|כסף|פרטי אשראי|פרטי כרטיס|פרטי האשראי|פרטי הכרטיס|דמי משלוח|דמי מכס|מכס|דמי שחרור|'
+    r'כרטיס האשראי|אמצעי תשלום|קנס|חוב)', re.I)
 _NEGATED_ACTION_PREFIX = re.compile(
     r"(?:\b(?:do not|don't|never|must not|should not|shouldn't|not to)\s+"
     r"(?:(?:ever|please)\s+)*|(?:אל|לא|אין)\s+)$", re.I,
@@ -52,7 +61,10 @@ _OBJECT_REFERENCE = re.compile(
     + _DEMONSTRATIVE_OBJECT_BOUNDARY + r')(?!\w)', re.I,
 )
 _ACTION_PRELUDE = re.compile(r'\s*(?:please|בבקשה)?\s*', re.I)
-_URGENCY = re.compile(r'\b(?:now|immediately|urgent(?:ly)?|within \d+ (?:minutes|hours))\b|(?:עכשיו|מיד|דחוף|בדחיפות)', re.I)
+_URGENCY = re.compile(
+    r'\b(?:now|immediately|urgent(?:ly)?|within \d+ (?:minutes|hours)|today|by midnight|or (?:your|the) '
+    r'(?:account|parcel|package))\b|'
+    r'(?:עכשיו|מיד|דחוף|בדחיפות|עד היום|בחצות|היום בלבד|תוך \d+ (?:שעות|דקות)|אחרת)', re.I)
 _THREAT = re.compile(r'\b(?:account.{0,30}(?:suspend|close|block)|suspended|locked out)\b|(?:החשבון.{0,25}(?:ייסגר|יחסם|ייחסם))', re.I)
 _LOGIN = re.compile(r'\b(?:log[ -]?in|sign[ -]?in)\b|(?:היכנס|כניסה)', re.I)
 
