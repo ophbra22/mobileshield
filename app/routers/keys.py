@@ -1,9 +1,11 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.deps import get_db, get_current_user
+from app.db.deps import get_current_user, get_db
 from app.db.models import ApiKey, User
 from app.security import generate_api_key, hash_api_key
 
@@ -65,6 +67,6 @@ def revoke_key(key_id: int, user: User = Depends(get_current_user), db: Session 
     if not key or key.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Key not found')
     key.is_active = False
-    key.revoked_at = key.revoked_at or key.created_at
+    key.revoked_at = key.revoked_at or datetime.now(UTC)
     db.commit()
     return {'revoked': True}

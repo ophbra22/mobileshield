@@ -3,7 +3,8 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.deps import get_db, get_current_user
+from app.auth import enforce_generic_rate_limit
+from app.db.deps import get_current_user, get_db
 from app.db.models import ApiKey, User
 from app.security import (
     PASSWORD_TOO_LONG_MSG,
@@ -14,7 +15,6 @@ from app.security import (
     validate_password_for_bcrypt,
     verify_password,
 )
-from app.auth import enforce_generic_rate_limit
 from app.settings import get_settings
 
 settings = get_settings()
@@ -79,7 +79,7 @@ def register(payload: RegisterRequest, request: Request, db: Session = Depends(g
         validate_password_for_bcrypt(payload.password)
         password_hash = hash_password(payload.password)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from None
     user = User(email=payload.email.lower(), password_hash=password_hash)
     db.add(user)
     db.commit()
@@ -98,7 +98,7 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
     try:
         valid = verify_password(payload.password, user.password_hash)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from None
     if not valid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid credentials')
     token = create_jwt({'sub': user.id})

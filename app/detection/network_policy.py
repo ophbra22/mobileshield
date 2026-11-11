@@ -1,13 +1,13 @@
 """Fail-closed URL authorization and disposable, deadline-bounded DNS workers."""
 from __future__ import annotations
 
-from dataclasses import dataclass
 import ipaddress
 import multiprocessing
 import re
 import socket
 import time
 import unicodedata
+from dataclasses import dataclass
 from urllib.parse import quote, urlsplit, urlunsplit
 
 
@@ -89,7 +89,7 @@ def canonical_target(url: str) -> NetworkTarget:
             # Reject inet_aton-style abbreviated, octal, hex and integer forms.
             if all(re.fullmatch(r'(?:[0-9]+|0x[0-9a-f]+)', label)
                    for label in host.split('.')):
-                raise DestinationBlocked()
+                raise DestinationBlocked() from None
             host = host.encode('idna').decode('ascii').lower()
             labels = host.split('.')
             if (len(labels) < 2 or len(host) > 253
@@ -98,7 +98,7 @@ def canonical_target(url: str) -> NetworkTarget:
                            for label in labels)
                     or any(host == suffix or host.endswith('.' + suffix)
                            for suffix in _INTERNAL_SUFFIXES)):
-                raise DestinationBlocked()
+                raise DestinationBlocked() from None
         else:
             host = public_address(host)
         authority = f'[{host}]' if ':' in host else host

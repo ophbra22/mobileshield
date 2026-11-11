@@ -9,7 +9,7 @@ No response-version request header is required on this endpoint.
 Checks are static by default. Setting `inspect_links: true` permits bounded
 destination inspection through the shared guarded transport. Application scans
 are stateless and responses use `Cache-Control: no-store`; infrastructure
-retention must be verified separately. See the [design](superpowers/specs/2026-10-08-message-analysis-design.md)
+retention must be verified separately. See [architecture.md](architecture.md)
 for input limits, privacy and coverage semantics.
 
 ## Legacy URL adapter and browser compatibility
@@ -58,25 +58,10 @@ the header. No CORS allowlist, credentials, transport or security permissions
 are weakened. Third-party browser integrations on the legacy route must add the
 supported header or migrate; otherwise they receive an explicit upgrade error.
 
-## Independent frontend/backend rollout
+## Rollout compatibility
 
-| Browser client | Backend | Outcome |
-| --- | --- | --- |
-| Original baseline, including already-open tabs | New guarded backend | Legacy call receives 409; baseline API rejects before mapping a result. Refresh/update is required. |
-| New frontend | Original backend | `/v1/analyze-message` is absent; HTTP failure produces an unavailable/error state, with no assessment. |
-| New frontend | New backend | Normal full-message assessment. |
-| Original baseline | Original backend | Known baseline benign-fallback defect remains until either new service is live. |
-
-After review and release checks, a coordinated main merge can tolerate either
-Render service completing first. Deployments are independent, not atomic.
-Check the deployed commit and synthetic acceptance for both services. The guard
-also covers stale original browser tabs after the backend updates; deploying the
-frontend alone cannot evict those tabs. The server cannot force a tab refresh or
-remove an already-displayed historical result.
-
-During rollback, keep the guarded backend available for stale original tabs.
-Rolling back the backend to the unguarded baseline restores their defect even
-if the current frontend remains new. Prefer a forward fix or a rollback build
-that retains this compatibility guard and the approved safety boundary. Do not
-restore the original frontend's benign fallback. Controller owns publication,
-live mismatch checks and deployment settings.
+The frontend and backend deploy independently. Browser tabs still running the
+pre-message-analysis bundle call the legacy route without the version header and
+receive `409 client_upgrade_required` instead of a result they would misread as
+benign. A new frontend talking to an old backend gets an HTTP error and shows an
+unavailable state, never an assessment. Rollbacks should keep this guard.

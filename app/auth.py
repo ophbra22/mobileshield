@@ -5,68 +5,67 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.db.deps import get_db
+from app.db.deps import get_db, user_from_bearer
 from app.db.models import ApiKey, ApiKeyUsage, RateLimitWindow, User
+from app.security import constant_time_compare, hash_api_key
 from app.settings import get_settings
-from app.security import constant_time_compare, decode_jwt, hash_api_key
-
 
 settings = get_settings()
 
 
 def _enforce_rate_limit(db: Session, api_key: ApiKey) -> None:
+    """Per-key fixed one-minute window stored in the database."""
     window_start = datetime.now(UTC).replace(second=0, microsecond=0)
-
+    query = (select(ApiKeyUsage)
+             .where(ApiKeyUsage.api_key_id == api_key.id, ApiKeyUsage.window_start == window_start)
+             .with_for_update())
     try:
-        usage = db.execute(
-            select(ApiKeyUsage)
-            .where(ApiKeyUsage.api_key_id == api_key.id, ApiKeyUsage.window_start == window_start)
-            .with_for_update()
-        ).scalar_one_or_none()
-
+        usage = db.execute(query).scalar_one_or_none()
         if usage is None:
             usage = ApiKeyUsage(api_key_id=api_key.id, window_start=window_start, count=1)
             db.add(usage)
             db.flush()
         else:
             usage.count += 1
-
-        if usage.count > settings.rate_limit_per_minute:
-            db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail='Rate limit exceeded for this API key. Please retry next minute.',
-            )
-        db.commit()
     except IntegrityError:
+        # A concurrent request created this window first; count against it.
         db.rollback()
-        usage = db.execute(
-            select(ApiKeyUsage)
-            .where(ApiKeyUsage.api_key_id == api_key.id, ApiKeyUsage.window_start == window_start)
-            .with_for_update()
-        ).scalar_one()
+        usage = db.execute(query).scalar_one()
         usage.count += 1
-        if usage.count > settings.rate_limit_per_minute:
-            db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail='Rate limit exceeded for this API key. Please retry next minute.',
-            )
-        db.commit()
+    if usage.count > settings.rate_limit_per_minute:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail='Rate limit exceeded for this API key. Please retry next minute.',
+        )
+    db.commit()
 
 
 def require_api_key(x_api_key: str | None = Header(default=None, alias='X-API-Key'), db: Session = Depends(get_db)) -> ApiKey:
     if not x_api_key:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Missing X-API-Key header.')
 
-    api_key = db.execute(select(ApiKey).where(ApiKey.key_prefix == x_api_key[:8])).scalar_one_or_none()
-    if not api_key or not api_key.is_active or api_key.revoked_at:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid API key.')
-    key_hash_candidate, _, _ = hash_api_key(x_api_key)
-    if not constant_time_compare(key_hash_candidate, api_key.key_hash):
+    api_key = _find_active_api_key(db, x_api_key)
+    if api_key is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid API key.')
 
     _enforce_rate_limit(db, api_key)
+    return api_key
+
+
+def _find_active_api_key(db: Session, raw_key: str) -> ApiKey | None:
+    """Look a key up by its keyed hash.
+
+    Every generated key shares the public ``ms_live_`` prefix, so the prefix is
+    display metadata only. The HMAC digest is unique and indexed; the database
+    match is re-checked in constant time before the key is trusted.
+    """
+    key_hash_candidate, _, _ = hash_api_key(raw_key)
+    api_key = db.execute(select(ApiKey).where(ApiKey.key_hash == key_hash_candidate)).scalar_one_or_none()
+    if api_key is None or not api_key.is_active or api_key.revoked_at:
+        return None
+    if not constant_time_compare(key_hash_candidate, api_key.key_hash):
+        return None
     return api_key
 
 
@@ -74,7 +73,7 @@ def require_admin_token(x_admin_token: str | None = Header(default=None, alias='
     # Dev-only administrative endpoint. Replace with hardened IAM in production.
     if not settings.enable_admin:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Not found')
-    if not settings.admin_token or x_admin_token != settings.admin_token:
+    if not settings.admin_token or not x_admin_token or not constant_time_compare(x_admin_token, settings.admin_token):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Unauthorized')
 
 
@@ -116,26 +115,13 @@ def resolve_identity(
     # Prefer API key
     api_key_header = request.headers.get('X-API-Key')
     if api_key_header:
-        api_key = db.execute(select(ApiKey).where(ApiKey.key_prefix == api_key_header[:8])).scalar_one_or_none()
-        if api_key and api_key.is_active and not api_key.revoked_at:
-            key_hash_candidate, _, _ = hash_api_key(api_key_header)
-            if constant_time_compare(key_hash_candidate, api_key.key_hash):
-                _enforce_rate_limit(db, api_key)
-                return None, api_key
+        api_key = _find_active_api_key(db, api_key_header)
+        if api_key is not None:
+            _enforce_rate_limit(db, api_key)
+            return None, api_key
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid API key.')
     # Else check JWT
     auth = request.headers.get('Authorization')
-    if auth and auth.lower().startswith('bearer '):
-        token = auth.split(' ', 1)[1]
-        try:
-            payload = decode_jwt(token)
-        except Exception:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid token')
-        user_id = payload.get('sub')
-        if not user_id:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid token')
-        user = db.get(User, user_id)
-        if not user:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='User not found')
-        return user, None
+    if auth:
+        return user_from_bearer(auth, db), None
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Missing credentials')

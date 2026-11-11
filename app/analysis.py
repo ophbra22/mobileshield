@@ -2,29 +2,12 @@ from __future__ import annotations
 
 import time
 
-from sqlalchemy.orm import Session
-
-from app.detection.engine import analyze_url_candidate, run_detection
+from app.detection.engine import analyze_url_candidate
 from app.detection.message_analyzer import assess_message
-from app.detection.network_policy import canonical_target, DestinationBlocked
-from app.detection.safe_transport import SafeTransport, UrlObservation, MAX_INSPECTION_SECONDS, InspectionBusy
+from app.detection.network_policy import DestinationBlocked, canonical_target
+from app.detection.safe_transport import MAX_INSPECTION_SECONDS, InspectionBusy, SafeTransport, UrlObservation
 from app.message_models import MessageRequest, MessageResponse
 from app.message_parser import parse_message
-
-from app.detection.models import DetectionResult
-
-
-def analyze_url(raw_url: str, db: Session, resolver=None) -> DetectionResult:
-    """
-    Legacy in-process entrypoint used by older callers and tests.
-    Delegates to the modular detection engine.
-    """
-    return run_detection(raw_url, db, resolver=resolver)
-
-
-def analyze_text_or_url(text: str, db: Session, resolver=None) -> DetectionResult:
-    """Legacy in-process URL-only interface; HTTP routes use analyze_message."""
-    return analyze_url(text, db, resolver=resolver)
 
 
 class InvalidMessage(ValueError):

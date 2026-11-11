@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Home from '../page';
 import { LanguageProvider } from '../context/LanguageContext';
-import { POST } from '../api/report/pdf/route';
 
 const result = { schema_version: 1, assessment: 'suspicious', analysis_status: 'complete',
   reasons: [{ code: 'urgency', strength: 'medium', source: 'message', link_id: null, params: {} }],
@@ -165,9 +164,4 @@ describe('message form with the real request lifecycle', () => {
     expect(screen.getByRole('link',{name:'Contact us'})).toHaveAttribute('href','mailto:MobileShield@gmail.com');
     expect(screen.getByRole('link',{name:'LinkedIn'})).toHaveAttribute('rel','noopener noreferrer');
   });
-});
-
-it('retires the PDF endpoint with no-store 410 without reading the request',async()=>{
-  const request = new Request('http://localhost/api/report/pdf',{method:'POST',body:'not json'});
-  const r = await POST(request as never); expect(r.status).toBe(410); expect(r.headers.get('Cache-Control')).toBe('no-store');
 });

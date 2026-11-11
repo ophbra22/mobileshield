@@ -4,12 +4,11 @@ import os
 import socket
 
 import pytest
+from unittest.mock import Mock
+from fastapi.testclient import TestClient
 import tldextract
 
 # Set before application imports; never read a developer's live configuration.
-os.environ['ALLOWLIST_ENABLED'] = 'false'
-os.environ['ALLOWLIST_SOURCES'] = 'local_popular'
-os.environ['ALLOWLIST_CACHE_PATH'] = ''
 os.environ['DATABASE_URL'] = 'sqlite://'
 
 # Legacy dataset helpers call the module convenience function. Use its bundled
@@ -65,3 +64,19 @@ def no_unexpected_network():
     attempts = list(_network_attempts)
     _network_attempts.clear()
     assert not attempts, 'Network attempted even if application code caught the error'
+
+
+@pytest.fixture
+def client(monkeypatch):
+    """ASGI client with a mocked link transport and no database startup."""
+    import app.main as main
+    from app.routers.analyze import get_scan_transport
+    from app.scan_limits import ScanRateLimiter
+    monkeypatch.setattr(main, 'initialize_database', lambda: None)
+    main.app.state.scan_limiter = ScanRateLimiter(limit=60)
+    transport = Mock()
+    main.app.dependency_overrides[get_scan_transport] = lambda: transport
+    with TestClient(main.app, raise_server_exceptions=False) as client:
+        client.transport_spy = transport
+        yield client
+    main.app.dependency_overrides.clear()

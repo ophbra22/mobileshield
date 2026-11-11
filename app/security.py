@@ -2,11 +2,10 @@ import hashlib
 import hmac
 import secrets
 from datetime import UTC, datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
-from fastapi import HTTPException, status
-from jose import JWTError, jwt
-from passlib.hash import bcrypt
+import bcrypt
+import jwt
 
 from app.settings import get_settings
 
@@ -30,16 +29,19 @@ def validate_password_for_bcrypt(password: str) -> bytes:
 
 def hash_password(password: str) -> str:
     raw = validate_password_for_bcrypt(password)
-    return bcrypt.hash(raw)
+    return bcrypt.hashpw(raw, bcrypt.gensalt()).decode('ascii')
 
 
 def verify_password(password: str, password_hash: str) -> bool:
     raw = validate_password_for_bcrypt(password)
-    return bcrypt.verify(raw, password_hash)
+    try:
+        return bcrypt.checkpw(raw, password_hash.encode('ascii'))
+    except ValueError:
+        return False
 
 
 def create_jwt(payload: dict[str, Any]) -> str:
-    to_encode = payload.copy()
+    to_encode = {key: str(value) if key == 'sub' else value for key, value in payload.items()}
     expire_minutes = settings.jwt_expires_minutes
     exp = datetime.now(UTC) + timedelta(minutes=expire_minutes)
     to_encode.update({'exp': exp})
@@ -47,14 +49,17 @@ def create_jwt(payload: dict[str, Any]) -> str:
 
 
 def decode_jwt(token: str) -> dict[str, Any]:
-    return jwt.decode(token, settings.jwt_secret, algorithms=['HS256'])
+    """Decode an HS256 token; raises ``jwt.InvalidTokenError`` on any failure."""
+    return jwt.decode(token, settings.jwt_secret, algorithms=['HS256'], options={'require': ['exp', 'sub']})
 
 
 def hash_api_key(raw_key: str) -> tuple[str, str, str]:
     """Return (hash, prefix, last4). Hash uses HMAC-SHA256 with SERVER_KEY."""
     server_key = settings.server_key.encode()
     digest = hmac.new(server_key, raw_key.encode(), hashlib.sha256).hexdigest()
-    prefix = raw_key[:8]
+    # Display-only: 12 characters include 4 random characters after the shared
+    # ``ms_live_`` marker. Lookups always use the digest, never the prefix.
+    prefix = raw_key[:12]
     last4 = raw_key[-4:]
     return digest, prefix, last4
 

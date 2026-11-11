@@ -1,5 +1,6 @@
 .env
 .env.*
+!.env.example
 __pycache__/
 *.pyc
 *.log
@@ -12,6 +13,8 @@ node_modules/
 
 .venv/
 .pytest_cache/
+.ruff_cache/
+*.db
 .coverage
 htmlcov/
 coverage.xml

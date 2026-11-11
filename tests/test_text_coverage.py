@@ -5,7 +5,6 @@ import pytest
 
 from app.message_parser import parse_message
 from tests.test_message_analysis import run
-from tests.test_message_api import client
 from tests.test_scan_integration import frontend_roundtrip
 
 ORDINARY = [

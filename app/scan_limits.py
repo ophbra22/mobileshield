@@ -6,12 +6,13 @@ Infrastructure/proxy log retention must be checked separately before release.
 """
 from __future__ import annotations
 
-from collections import OrderedDict
 import asyncio
+import ipaddress
 import logging
 import secrets
 import threading
 import time
+from collections import OrderedDict
 
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
@@ -24,9 +25,35 @@ _SCAN_PATHS = frozenset({'/v1/analyze-message', '/v1/analyze'})
 _LOG = logging.getLogger('mobileshield.requests')
 
 
+def client_identity(host: str | None) -> str:
+    """Rate-limit key for a client address.
+
+    One IPv6 subscriber usually controls a whole /64, so per-address IPv6 keys
+    would let a single client rotate addresses to escape its limit.
+    """
+    if not host:
+        return '<unknown>'
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return host
+    if address.version == 4:
+        return str(address)
+    if address.ipv4_mapped is not None:
+        return str(address.ipv4_mapped)
+    return str(ipaddress.ip_network(f'{address}/64', strict=False))
+
+
 class ScanRateLimiter:
-    def __init__(self, limit: int, *, clock=time.monotonic):
+    """Fixed one-minute window per client, held in process memory.
+
+    The table is bounded. When it is full the oldest window is evicted instead
+    of refusing new clients, so a flood of distinct addresses cannot lock every
+    other user out. Multi-process deployments need a shared store (e.g. Redis).
+    """
+    def __init__(self, limit: int, *, clock=time.monotonic, max_identities: int = MAX_IDENTITIES):
         self.limit = limit
+        self.max_identities = max_identities
         self._clock = clock
         self._identities: OrderedDict[str, tuple[float, int]] = OrderedDict()
         self._lock = threading.Lock()
@@ -43,6 +70,8 @@ class ScanRateLimiter:
         with self._lock:
             now = self._clock()
             self._expire(now)
+            if self.limit <= 0:
+                return False
             current = self._identities.get(identity)
             if current:
                 expiry, count = current
@@ -50,8 +79,8 @@ class ScanRateLimiter:
                     return False
                 self._identities[identity] = (expiry, count + 1)
                 return True
-            if len(self._identities) >= MAX_IDENTITIES or self.limit <= 0:
-                return False
+            while len(self._identities) >= self.max_identities:
+                self._identities.popitem(last=False)
             self._identities[identity] = (now + 60, 1)
             return True
 
@@ -79,18 +108,25 @@ class _SuppressAccess(logging.Filter):
         return False
 
 
+# Uvicorn lifecycle messages whose arguments are only a PID or the bind address.
+_LIFECYCLE_TEMPLATES = frozenset({
+    'Started server process [%d]', 'Finished server process [%d]',
+    'Waiting for application startup.', 'Application startup complete.',
+    'Waiting for application shutdown.', 'Application shutdown complete.', 'Shutting down',
+    'Uvicorn running on %s://%s:%d (Press CTRL+C to quit)',
+    'Uvicorn running on %s://[%s]:%d (Press CTRL+C to quit)',
+})
+
+
 class _SanitizeServer(logging.Filter):
     def filter(self, record):
-        if (isinstance(record.msg, str) and not record.args and not record.exc_info
-                and not record.exc_text and not record.stack_info and record.msg in {
-            'Waiting for application startup.', 'Application startup complete.',
-            'Waiting for application shutdown.', 'Application shutdown complete.', 'Shutting down',
-        }):
+        if (isinstance(record.msg, str) and record.msg in _LIFECYCLE_TEMPLATES and record.levelno <= logging.INFO
+                and not record.exc_info and not record.exc_text and not record.stack_info):
             return True
         # Uvicorn's protocol errors and exc_info may contain URLs, headers or
         # exception messages. Preserve occurrence/severity without those details.
-        record.msg = 'route=<server-error> status=503 duration_ms=0 request_id=%s'
-        record.args = (secrets.token_hex(16),)
+        record.msg = 'route=<server-error> level=%s request_id=%s'
+        record.args = (record.levelname, secrets.token_hex(16))
         record.exc_info = record.exc_text = record.stack_info = None
         return True
 
@@ -144,7 +180,7 @@ class PrivateRequestMiddleware:
             if scope.get('method') == 'POST':
                 if scope.get('path') in _SCAN_PATHS:
                     client = scope.get('client')
-                    identity = str(client[0]) if client else '<unknown>'
+                    identity = client_identity(client[0] if client else None)
                     if not scope['app'].state.scan_limiter.allow(identity):
                         return await reject(429, 'rate_limit_exceeded')
                 # Every POST below is buffered, including redirects/unmatched

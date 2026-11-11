@@ -35,8 +35,9 @@ services:
     build:
       context: ./mobileshield-web
       dockerfile: Dockerfile
-    environment:
-      NEXT_PUBLIC_API_BASE: http://localhost:8000
+      args:
+        # Inlined into the browser bundle at build time; must be reachable from the browser.
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
     ports:
       - "3000:3000"
     depends_on:

@@ -1,13 +1,12 @@
 """Real ASGI serialization, fixed synthetic corpus and client parser integration."""
 import json
-from pathlib import Path
 import subprocess
+from pathlib import Path
 from typing import get_args
 
 import pytest
 
-from tests.test_message_api import client
-from app.message_models import Assessment, AnalysisStatus, ActionCode, MessageResponse
+from app.message_models import ActionCode, AnalysisStatus, Assessment, MessageResponse
 
 ROOT = Path(__file__).resolve().parents[1]
 CORPUS = json.loads((ROOT / 'tests/fixtures/messages.json').read_text())
@@ -90,7 +89,7 @@ def test_independent_positive_evidence_survives_limited_coverage(client, text):
 
 def test_all_contract_enums_survive_endpoint_serialization(client, monkeypatch):
     import app.routers.analyze as router
-    from app.message_models import Reason, REASON_PARAM_KEYS, LinkResult, MAX_REASONS
+    from app.message_models import MAX_REASONS, REASON_PARAM_KEYS, LinkResult, Reason
     values = []
     # Controlled valid production response models exercise every accepted enum
     # through FastAPI response validation/serialization and the real TS parser.
@@ -120,9 +119,9 @@ def test_all_contract_enums_survive_endpoint_serialization(client, monkeypatch):
 
 
 def test_fixture_transport_partial_failures_keep_observed_warning(client):
-    from tests.browser_app import FixtureTransport
     from app.main import app
     from app.routers.analyze import get_scan_transport
+    from tests.fixture_server import FixtureTransport
     app.dependency_overrides[get_scan_transport] = FixtureTransport
     result = client.post('/v1/analyze-message', json={
         'text': 'Send your password https://paypal-login.attacker.example https://failed.example https://busy.example https://example.org',
@@ -135,7 +134,7 @@ def test_fixture_transport_partial_failures_keep_observed_warning(client):
 
 
 def test_fixture_unknown_destinations_fail_without_socket_or_dns():
-    from tests.browser_app import FixtureTransport
+    from tests.fixture_server import FixtureTransport
     # tests/conftest.py detects network attempts even if swallowed by the code.
     result = FixtureTransport().inspect('https://arbitrary.example/private?token=SYNTHETIC', deadline=0)
     assert result.limitations == ['inspection_failed']

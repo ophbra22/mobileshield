@@ -3,8 +3,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from app.message_models import MessageRequest, MessageResponse
 from app.detection.safe_transport import UrlObservation
+from app.message_models import MessageRequest, MessageResponse
 
 
 def run(text, inspect=False, transport=None):
@@ -61,7 +61,7 @@ def test_unsupported_without_evidence_is_unknown():
 
 def test_phishing_link_not_averaged_away_by_failure():
     transport = Mock()
-    from tests.test_url_evidence import observed, FIXTURE
+    from tests.test_url_evidence import FIXTURE, observed
     transport.inspect.side_effect = [observed('https://paypal-login.attacker.com', FIXTURE.read_text()),
                                      UrlObservation(limitations=['deadline_exceeded'])]
     result = run('See https://paypal-login.attacker.com and https://example.org', True, transport)
@@ -120,7 +120,7 @@ def test_busy_first_link_retains_static_url_warning():
 
 def test_busy_later_link_preserves_finished_evidence():
     from app.detection.safe_transport import InspectionBusy
-    from tests.test_url_evidence import observed, FIXTURE
+    from tests.test_url_evidence import FIXTURE, observed
     transport = Mock(inspect=Mock(side_effect=[observed('https://paypal-login.attacker.com', FIXTURE.read_text()), InspectionBusy()]))
     result = run('https://paypal-login.attacker.com https://example.com', True, transport)
     assert result.assessment == 'phishing'
@@ -136,6 +136,7 @@ def test_malformed_backend_observation_never_safe():
 
 import json
 from pathlib import Path
+
 _CORPUS = json.loads((Path(__file__).parent / 'fixtures/messages.json').read_text())
 
 

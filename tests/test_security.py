@@ -1,14 +1,11 @@
-"""Synthetic, network-free regressions for the bounded dependency remediation."""
+"""Security headers, CSP, scan admission and JWT/password handling (network-free)."""
 import logging
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import jwt
 import pytest
-from jose import JWTError, jwt
-from jose.exceptions import ExpiredSignatureError, JWKError
-from jose.backends.native import HMACKey
-
-from tests.test_message_api import client
+from jwt import ExpiredSignatureError, InvalidAlgorithmError, InvalidTokenError
 
 
 @pytest.mark.parametrize('host', ['testserver/docs?PRIVATE_HOST=', 'testserver/docs#PRIVATE_HOST='])
@@ -37,6 +34,7 @@ def test_actual_docs_keep_documentation_csp(client, path, host):
 
 def test_malformed_host_cannot_bypass_scan_admission_or_enable_network(client, monkeypatch):
     import requests
+
     from app.main import app
     from app.scan_limits import ScanRateLimiter
     request = Mock(side_effect=AssertionError('Unexpected Requests call'))
@@ -80,18 +78,26 @@ def test_hs256_expiry_is_enforced(synthetic_jwt):
 
 def test_hs256_wrong_key_is_rejected(synthetic_jwt):
     token = jwt.encode({'sub': 'synthetic-user'}, 'different-synthetic-secret', algorithm='HS256')
-    with pytest.raises(JWTError):
+    with pytest.raises(InvalidTokenError):
         synthetic_jwt.decode_jwt(token)
 
 
 @pytest.mark.parametrize('algorithm', ['HS384', 'HS512'])
 def test_nonconfigured_algorithm_is_rejected(synthetic_jwt, algorithm):
     token = jwt.encode({'sub': 'synthetic-user'}, synthetic_jwt.settings.jwt_secret, algorithm=algorithm)
-    with pytest.raises(JWTError, match='alg value is not allowed'):
+    with pytest.raises(InvalidAlgorithmError):
         synthetic_jwt.decode_jwt(token)
 
 
-def test_openssh_ecdsa_key_is_rejected_as_hmac_secret():
-    # Only format recognition is needed; this is synthetic and not a real key.
-    with pytest.raises(JWKError, match='asymmetric key'):
-        HMACKey('ecdsa-sha2-nistp256 AAAA synthetic-test', algorithm='HS256')
+def test_token_without_expiry_is_rejected(synthetic_jwt):
+    token = jwt.encode({'sub': 'synthetic-user'}, synthetic_jwt.settings.jwt_secret, algorithm='HS256')
+    with pytest.raises(InvalidTokenError):
+        synthetic_jwt.decode_jwt(token)
+
+
+def test_password_hash_roundtrip():
+    from app.security import hash_password, verify_password
+    hashed = hash_password('correct horse battery')
+    assert verify_password('correct horse battery', hashed)
+    assert not verify_password('wrong password!', hashed)
+    assert not verify_password('correct horse battery', 'not-a-bcrypt-hash')

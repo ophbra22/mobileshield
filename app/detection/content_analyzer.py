@@ -1,10 +1,10 @@
 """Pure HTML evidence; destination fetching belongs exclusively to SafeTransport."""
 from __future__ import annotations
 
-from html.parser import HTMLParser
 import re
-from urllib.parse import urlsplit
+from html.parser import HTMLParser
 from typing import TYPE_CHECKING
+from urllib.parse import urlsplit
 
 from app.detection.models import ContentAnalysis
 from app.detection.url_normalizer import extract_domain

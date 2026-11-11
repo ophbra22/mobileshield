@@ -1,0 +1,33 @@
+[project]
+name = "mobileshield"
+version = "1.0.0"
+description = "Bilingual (Hebrew/English) phishing-message checker"
+requires-python = ">=3.11"
+license = "MIT"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"
+filterwarnings = [
+    # Starlette's TestClient nudges toward httpx2; the httpx client is still supported.
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+    # Tests deliberately sign tokens with short synthetic keys.
+    "ignore::jwt.warnings.InsecureKeyLengthWarning",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["F", "E9", "B", "UP", "I"]
+ignore = [
+    "B905",   # zip() over deliberately offset sequences
+    "B008",   # FastAPI's Depends()/Header() in defaults is the framework idiom
+    "UP035", "UP006", "UP007", "UP045",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011", "B017"]
+"tests/conftest.py" = ["I001", "E402"]  # environment must be set before app imports
