@@ -17,6 +17,7 @@ or an account/login token in a hostname (``office365-login.example``).
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Optional
 
@@ -88,6 +89,27 @@ BRANDS: dict[str, Brand] = {
     'onezero': _brand({'onezerobank.com'}, r'one\s?zero\s+bank|onezero|וואן\s?זירו', {'onezero', 'onezerobank'}),
     'pepper': _brand({'pepper.co.il'}, r'pepper\s+(?:bank|pay|invest)|בנק\s+פפר|פפר\s+פיי', {'pepper'}, ambiguous=True),
     'israelpost': _brand({'israelpost.co.il'}, r'israel\s+post|דואר\s+ישראל', {'israelpost'}),
+    # Israeli cards, payment apps, utilities and government services that scams commonly name.
+    'cal': _brand({'cal-online.co.il'}, r'ויזה\s+כאל|חברת\s+כאל|כרטיס\s+כאל|לקוחות\s+כאל|כאל\s*[:\-–]|cal[\s-]?online', {'calonline'}),
+    'max': _brand({'max.co.il'}, r'max\s+(?:it|card|finance)|כרטיס\s+מקס|מקס\s+(?:איט|פיננסים)|לאומי\s+קארד', {'max'}, ambiguous=True),
+    'isracard': _brand({'isracard.co.il'}, r'isracard|ישראכרט', {'isracard'}),
+    'bit': _brand({'bitpay.co.il'}, r'אפליקציית\s+ביט|(?:העברה|תשלום|כסף)\s+ב?ביט|bit\s+app'),
+    'paybox': _brand({'payboxapp.com'}, r'pay\s?box|פייבוקס', {'paybox'}),
+    'kvish': _brand({'kvish6.co.il'}, r'כביש\s*6|כביש\s+שש|kvish\s*6', {'kvish'}),
+    'bituachleumi': _brand({'btl.gov.il', 'gov.il'}, r'ביטוח\s+לאומי|bituach\s+leumi', {'bituachleumi', 'btl'}),
+    'taxauthority': _brand({'gov.il'}, r'רשות\s+המי?סים|מס\s+הכנסה|israel\s+tax\s+authority', {'taxes'}, ambiguous=True),
+    'iec': _brand({'iec.co.il'}, r'חברת\s+החשמל', {'iec'}),
+    'bezeq': _brand({'bezeq.co.il'}, r'bezeq|חברת\s+בזק|חשבון\s+בזק|בזק\s+בינלאומי', {'bezeq'}),
+    'cellcom': _brand({'cellcom.co.il'}, r'cellcom|סלקום', {'cellcom'}),
+    'pelephone': _brand({'pelephone.co.il'}, r'pelephone|פלאפון', {'pelephone'}),
+    'hot': _brand({'hot.net.il', 'hotmobile.co.il'}, r'hot\s+mobile|הוט\s+מובייל|חברת\s+הוט', {'hotmobile'}),
+    'coinbase': _brand({'coinbase.com'}, r'coinbase', {'coinbase'}),
+    'partner': _brand({'partner.co.il'}, r'partner\s+(?:communications|israel)|חברת\s+פרטנר|פרטנר\s+תקשורת', {'partner'}, ambiguous=True),
+    # Global services frequently used as delivery and subscription lures.
+    'netflix': _brand({'netflix.com'}, r'netflix|נטפליקס', {'netflix'}),
+    'usps': _brand({'usps.com'}, r'usps|u\.s\.\s+postal\s+service', {'usps'}),
+    'dhl': _brand({'dhl.com'}, r'dhl', {'dhl'}),
+    'fedex': _brand({'fedex.com'}, r'fed\s?ex|פדקס', {'fedex'}),
 }
 
 # 'bank' is a generic word, never a specific organization claim.
@@ -179,6 +201,43 @@ def path_impersonated_brands(hostname: str, path: str) -> list[str]:
             if not brand.ambiguous and _tokens_name_brand(tokens, brand) and not _owned_by(hostname, brand_id)]
 
 
+# Cyrillic and Greek letters that render like Latin ones (``gооgle`` with Cyrillic о).
+_CONFUSABLES = str.maketrans({
+    'а': 'a', 'в': 'b', 'е': 'e', 'к': 'k', 'м': 'm', 'н': 'h', 'о': 'o', 'р': 'p', 'с': 'c', 'т': 't', 'у': 'y',
+    'х': 'x', 'і': 'i', 'ј': 'j', 'ѕ': 's', 'һ': 'h', 'ԁ': 'd', 'ԛ': 'q', 'ԝ': 'w', 'ё': 'e',
+    'α': 'a', 'ε': 'e', 'ι': 'i', 'κ': 'k', 'ν': 'v', 'ο': 'o', 'ρ': 'p', 'τ': 't', 'υ': 'u', 'χ': 'x',
+    'ı': 'i', 'ɑ': 'a', 'ɡ': 'g',
+})
+
+
+def unicode_host(hostname: str) -> str:
+    """Decode punycode labels so look-alike checks see the letters a reader sees."""
+    labels = []
+    for label in (hostname or '').lower().rstrip('.').split('.'):
+        if label.startswith('xn--'):
+            try:
+                label = label[4:].encode('ascii').decode('punycode')
+            except (UnicodeError, ValueError):
+                pass
+        labels.append(label)
+    return '.'.join(labels)
+
+
+def _latin_skeleton(host: str) -> str:
+    """Map confusable letters and accented Latin letters to plain ASCII look-alikes."""
+    decomposed = unicodedata.normalize('NFKD', host.translate(_CONFUSABLES))
+    return ''.join(c for c in decomposed if not unicodedata.category(c).startswith('M'))
+
+
+def mixed_script_label(hostname: str) -> bool:
+    """A single label mixing Latin with another alphabet is a classic disguise."""
+    for label in unicode_host(hostname).split('.'):
+        scripts = {unicodedata.name(c, '').split(' ')[0] for c in label if c.isalpha()}
+        if 'LATIN' in scripts and len(scripts) > 1:
+            return True
+    return False
+
+
 HOMOGLYPH_MAP = {'0': 'o', '1': 'l', 'i': 'l', '3': 'e', '4': 'a', '5': 's', '7': 't', '8': 'b', '@': 'a', '$': 's'}
 
 
@@ -251,19 +310,29 @@ class BrandLookalike:
 
 
 def analyze_brand(domain: str) -> Optional[BrandLookalike]:
-    """Detect a host token that imitates a brand name (``paypa1``, ``rnicrosoft``)."""
-    host = (domain or '').lower().rstrip('.')
-    if not host:
+    """Detect a host token that imitates a brand name (``paypa1``, ``rnicrosoft``, Cyrillic ``gооgle``)."""
+    ascii_host = (domain or '').lower().rstrip('.')
+    if not ascii_host:
         return None
+    visible = unicode_host(ascii_host)
+    host = _latin_skeleton(visible)
+    disguised = host != visible
     suffix = split_domain(host).suffix
     stem = host[: -len(suffix) - 1] if suffix and host.endswith('.' + suffix) else host
     tokens = [token for token in re.split(r'[.\-_]+', stem) if token]
+    score = 35 if disguised or 'xn--' in ascii_host else 25
+    if disguised:
+        # Foreign or accented letters spelling a brand name exactly are never the brand's own host.
+        for brand_id, brand in BRANDS.items():
+            names = brand.host_tokens | ({_LOOKALIKE_TARGETS[brand_id]} if brand_id in _LOOKALIKE_TARGETS else set())
+            if any(token in names for token in tokens) and not _owned_by(ascii_host, brand_id):
+                return BrandLookalike(brand=brand_id, score=score, method='homoglyph', distance=0,
+                                      official_domain_matched=False)
     for token in tokens:
         for brand_id, target in _LOOKALIKE_TARGETS.items():
             method = _lookalike_method(token, target)
-            if method is None or _owned_by(host, brand_id):
+            if method is None or _owned_by(ascii_host, brand_id):
                 continue
-            score = 35 if 'xn--' in host else 25
             return BrandLookalike(brand=brand_id, score=score, method=method,
                                   distance=_levenshtein(token, target),
                                   official_domain_matched=False)

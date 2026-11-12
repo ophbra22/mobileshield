@@ -49,7 +49,9 @@ const translations = {
       unsupported_text: 'Some message text could not be assessed.', invalid_link: 'A link could not be parsed or supported.',
       inspection_disabled: 'Linked pages were not visited.', inspection_failed: 'A linked page inspection could not finish.',
       destination_blocked: 'A destination was blocked by inspection safeguards.', body_limit: 'A page exceeded the inspection size limit.',
-      deadline_exceeded: 'The inspection time limit was reached.', unknown_reason: 'Some evidence could not be interpreted.',
+      deadline_exceeded: 'The inspection time limit was reached.',
+      shortened_link: 'A shortened link hides where it really leads.', high_abuse_domain_ending: 'The link uses a domain ending that scams use often.',
+      scam_scenario: 'The message follows a scenario that scams reuse, such as a held parcel, a prize, a refund or a blocked account.', unknown_reason: 'Some evidence could not be interpreted.',
     },
     inspection: { not_requested: 'Page not visited', completed: 'Page inspection completed', blocked: 'Destination blocked', failed: 'Page inspection failed', skipped: 'Page inspection skipped' },
     errors: {
@@ -104,7 +106,9 @@ const translations = {
       unsupported_text: 'לא ניתן היה להעריך חלק מטקסט ההודעה.', invalid_link: 'לא ניתן היה לפענח קישור או לתמוך בו.',
       inspection_disabled: 'דפי הקישורים לא נפתחו.', inspection_failed: 'בדיקה של דף מקושר לא הסתיימה.',
       destination_blocked: 'יעד נחסם על ידי מנגנוני ההגנה של הבדיקה.', body_limit: 'דף חרג ממגבלת הגודל לבדיקה.',
-      deadline_exceeded: 'הבדיקה הגיעה למגבלת הזמן.', unknown_reason: 'לא ניתן היה לפרש חלק מהמידע.',
+      deadline_exceeded: 'הבדיקה הגיעה למגבלת הזמן.',
+      shortened_link: 'קישור מקוצר מסתיר את היעד האמיתי שלו.', high_abuse_domain_ending: 'הקישור משתמש בסיומת מתחם שנפוצה בהונאות.',
+      scam_scenario: 'ההודעה בנויה לפי תרחיש שחוזר בהונאות, כמו חבילה מעוכבת, זכייה, החזר כספי או חשבון חסום.', unknown_reason: 'לא ניתן היה לפרש חלק מהמידע.',
     },
     inspection: { not_requested: 'הדף לא נפתח', completed: 'בדיקת הדף הושלמה', blocked: 'היעד נחסם', failed: 'בדיקת הדף נכשלה', skipped: 'בדיקת הדף דולגה' },
     errors: {

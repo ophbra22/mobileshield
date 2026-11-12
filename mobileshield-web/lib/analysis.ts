@@ -3,7 +3,7 @@ export type Assessment = 'phishing' | 'suspicious' | 'no_clear_signs' | 'unknown
 export type AnalysisStatus = 'complete' | 'partial' | 'unavailable';
 export type ActionCode = 'avoid_interaction' | 'verify_independently' | 'do_not_share_secrets' | 'consider_link_inspection' | 'retry_later';
 export type InspectionStatus = 'not_requested' | 'completed' | 'blocked' | 'failed' | 'skipped';
-export type ReasonCode = 'credential_request' | 'payment_request' | 'urgency' | 'brand_destination_mismatch' | 'lookalike_host' | 'suspicious_obfuscation' | 'credential_form' | 'payment_form' | 'local_blocklist_hit' | 'certificate_mismatch' | 'unsupported_text' | 'invalid_link' | 'inspection_disabled' | 'inspection_failed' | 'destination_blocked' | 'body_limit' | 'deadline_exceeded';
+export type ReasonCode = 'credential_request' | 'payment_request' | 'urgency' | 'brand_destination_mismatch' | 'lookalike_host' | 'suspicious_obfuscation' | 'credential_form' | 'payment_form' | 'local_blocklist_hit' | 'certificate_mismatch' | 'unsupported_text' | 'invalid_link' | 'inspection_disabled' | 'inspection_failed' | 'destination_blocked' | 'body_limit' | 'deadline_exceeded' | 'shortened_link' | 'high_abuse_domain_ending' | 'scam_scenario';
 export interface MessageRequest { text: string; inspect_links: boolean }
 export interface Reason {
   code: string;
@@ -43,15 +43,16 @@ export class AnalysisError extends Error {
 }
 
 export const MAX_TEXT_CODEPOINTS = 10_000;
-export const CLIENT_REQUEST_TIMEOUT_MS = 30_000;
+/** Long enough for a sleeping host to wake up and still finish the 20 s link-inspection budget. */
+export const CLIENT_REQUEST_TIMEOUT_MS = 60_000;
 const assessments = ['phishing', 'suspicious', 'no_clear_signs', 'unknown'] as const;
 const statuses = ['complete', 'partial', 'unavailable'] as const;
 const actions = ['avoid_interaction', 'verify_independently', 'do_not_share_secrets', 'consider_link_inspection', 'retry_later'] as const;
-const reasonCodes: readonly ReasonCode[] = ['credential_request', 'payment_request', 'urgency', 'brand_destination_mismatch', 'lookalike_host', 'suspicious_obfuscation', 'credential_form', 'payment_form', 'local_blocklist_hit', 'certificate_mismatch', 'unsupported_text', 'invalid_link', 'inspection_disabled', 'inspection_failed', 'destination_blocked', 'body_limit', 'deadline_exceeded'];
-const hostFactCodes = ['suspicious_obfuscation', 'credential_form', 'payment_form', 'local_blocklist_hit', 'certificate_mismatch', 'invalid_link', 'destination_blocked'];
+const reasonCodes: readonly ReasonCode[] = ['credential_request', 'payment_request', 'urgency', 'brand_destination_mismatch', 'lookalike_host', 'suspicious_obfuscation', 'credential_form', 'payment_form', 'local_blocklist_hit', 'certificate_mismatch', 'unsupported_text', 'invalid_link', 'inspection_disabled', 'inspection_failed', 'destination_blocked', 'body_limit', 'deadline_exceeded', 'shortened_link', 'high_abuse_domain_ending', 'scam_scenario'];
+const hostFactCodes = ['suspicious_obfuscation', 'credential_form', 'payment_form', 'local_blocklist_hit', 'certificate_mismatch', 'invalid_link', 'destination_blocked', 'shortened_link', 'high_abuse_domain_ending'];
 const brandFactCodes = ['brand_destination_mismatch', 'lookalike_host'];
 /** Mirrors app/brand.py KNOWN_BRAND_IDS (checked by tests/test_brand_registry.py). */
-const brands = ['amazon', 'amex', 'apple', 'appleid', 'bank', 'bankofamerica', 'beinleumi', 'binance', 'capitalone', 'cashapp', 'chase', 'citibank', 'discount', 'facebook', 'google', 'hapoalim', 'hsbc', 'icloud', 'instagram', 'israelpost', 'leumi', 'mastercard', 'meta', 'microsoft', 'mizrahi', 'office', 'onezero', 'outlook', 'paypal', 'pepper', 'stripe', 'telegram', 'venmo', 'visa', 'wellsfargo', 'whatsapp'];
+const brands = ['amazon', 'amex', 'apple', 'appleid', 'bank', 'bankofamerica', 'beinleumi', 'bezeq', 'binance', 'bit', 'bituachleumi', 'cal', 'capitalone', 'cashapp', 'cellcom', 'chase', 'citibank', 'coinbase', 'dhl', 'discount', 'facebook', 'fedex', 'google', 'hapoalim', 'hot', 'hsbc', 'icloud', 'iec', 'instagram', 'isracard', 'israelpost', 'kvish', 'leumi', 'mastercard', 'max', 'meta', 'microsoft', 'mizrahi', 'netflix', 'office', 'onezero', 'outlook', 'partner', 'paybox', 'paypal', 'pelephone', 'pepper', 'stripe', 'taxauthority', 'telegram', 'usps', 'venmo', 'visa', 'wellsfargo', 'whatsapp'];
 
 function invalid(): never { throw new AnalysisError('invalid_response'); }
 function record(value: unknown, keys: readonly string[]): Record<string, unknown> {

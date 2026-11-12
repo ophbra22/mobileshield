@@ -273,7 +273,11 @@ def test_actual_negative_form_observation_requires_completed_html():
 def test_invalid_candidate_and_raw_observation_errors_never_leak():
     invalid = candidate('https://user:secret@example.com')
     result = analyze(invalid, None)
-    assert result.assessment == 'unknown'
+    # Credentials before the host disguise the destination: a warning, with no host or secret echoed.
+    assert result.assessment == 'suspicious'
+    assert {reason.code for reason in result.reasons} == {'invalid_link', 'suspicious_obfuscation'}
+    assert all(not reason.params for reason in result.reasons)
+    assert 'secret' not in result.model_dump_json()
     assert result.inspection_status == 'skipped'
     assert result.limitations == ['invalid_link']
     link = candidate('https://example.com')

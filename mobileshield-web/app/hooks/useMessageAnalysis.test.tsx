@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { LanguageProvider, useLanguage } from '../context/LanguageContext';
 import { useMessageAnalysis } from './useMessageAnalysis';
+import { CLIENT_REQUEST_TIMEOUT_MS } from '@/lib/analysis';
 
 const response = (assessment = 'suspicious') => new Response(JSON.stringify({
   schema_version:1,assessment,analysis_status:'complete',reasons:[],recommended_actions:['verify_independently'],limitations:[],links:[],request_id:'c7f7fe4fd9064f72951a7ce9a7677d30',
@@ -104,7 +105,7 @@ describe('message request lifecycle', () => {
     vi.useFakeTimers(); vi.stubGlobal('fetch',vi.fn(() => new Promise(() => {})));
     const {result}=renderHook(() => useMessageAnalysis());
     act(() => {void result.current.submit({text:'original text',inspect_links:true});});
-    await act(async () => {await vi.advanceTimersByTimeAsync(30000);});
+    await act(async () => {await vi.advanceTimersByTimeAsync(CLIENT_REQUEST_TIMEOUT_MS);});
     expect(result.current.state).toMatchObject({status:'error',submittedText:'original text',error:{code:'timeout'}});
   });
 });
