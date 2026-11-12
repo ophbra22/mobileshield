@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -22,34 +22,30 @@ settings = get_settings()
 router = APIRouter(prefix='/v1/auth', tags=['auth'])
 
 
+def _password_length(password: str) -> str:
+    # bcrypt reads at most 72 bytes; count bytes, not characters.
+    byte_len = len(password.encode('utf-8'))
+    if byte_len < 8:
+        raise ValueError('Password too short (minimum 8 characters).')
+    if byte_len > 72:
+        raise ValueError(PASSWORD_TOO_LONG_MSG)
+    return password
+
+
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=1024)
 
-    @classmethod
-    def model_validate(cls, value):
-        obj = super().model_validate(value)
-        byte_len = len(obj.password.encode('utf-8'))
-        if byte_len < 8:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Password too short (minimum 8 characters).')
-        if byte_len > 72:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=PASSWORD_TOO_LONG_MSG)
-        return obj
+    # A field validator runs on every request; overriding model_validate does
+    # not, because FastAPI never calls it.
+    _password_length = field_validator('password')(_password_length)
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=1024)
 
-    @classmethod
-    def model_validate(cls, value):
-        obj = super().model_validate(value)
-        byte_len = len(obj.password.encode('utf-8'))
-        if byte_len < 8:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Password too short (minimum 8 characters).')
-        if byte_len > 72:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=PASSWORD_TOO_LONG_MSG)
-        return obj
+    _password_length = field_validator('password')(_password_length)
 
 
 class AuthResponse(BaseModel):

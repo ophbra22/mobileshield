@@ -23,7 +23,7 @@ ReasonCode = Literal[
     'lookalike_host', 'suspicious_obfuscation', 'credential_form', 'payment_form',
     'local_blocklist_hit', 'certificate_mismatch', 'unsupported_text', 'invalid_link',
     'inspection_disabled', 'inspection_failed', 'destination_blocked', 'body_limit',
-    'deadline_exceeded',
+    'deadline_exceeded', 'shortened_link', 'high_abuse_domain_ending', 'scam_scenario',
 ]
 
 # Parameters are deliberately restricted to facts that can be safely localized.
@@ -33,7 +33,8 @@ REASON_PARAM_KEYS: dict[str, frozenset[str]] = {
 }
 for _code in (
     'suspicious_obfuscation', 'credential_form', 'payment_form', 'local_blocklist_hit',
-    'certificate_mismatch', 'invalid_link', 'destination_blocked',
+    'certificate_mismatch', 'invalid_link', 'destination_blocked', 'shortened_link',
+    'high_abuse_domain_ending',
 ):
     REASON_PARAM_KEYS[_code] = frozenset({'display_host'})
 for _code in ('brand_destination_mismatch', 'lookalike_host'):

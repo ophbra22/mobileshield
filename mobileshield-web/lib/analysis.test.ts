@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { normalizeLegacyVerdict, parseAnalysisResponse, validateMessageRequest } from './analysis';
+import { CLIENT_REQUEST_TIMEOUT_MS, normalizeLegacyVerdict, parseAnalysisResponse, validateMessageRequest } from './analysis';
 import { analyzeMessage } from './api';
 
 const response = () => ({
@@ -133,13 +133,13 @@ describe('public message transport', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('token=secret')));
     await expect(analyzeMessage({text:'hello',inspect_links:false},signal())).rejects.toMatchObject({code:'network_error',message:'network_error'});
   });
-  it('enforces a thirty-second deadline and aborts the network request', async () => {
+  it('enforces the client deadline and aborts the network request', async () => {
     vi.useFakeTimers();
     let transportSignal: AbortSignal | undefined;
     vi.stubGlobal('fetch', vi.fn((_url,init) => { transportSignal=init.signal; return new Promise(() => {}); }));
     const request = analyzeMessage({text:'hello',inspect_links:true},signal());
     const assertion = expect(request).rejects.toMatchObject({code:'timeout'});
-    await vi.advanceTimersByTimeAsync(30000);
+    await vi.advanceTimersByTimeAsync(CLIENT_REQUEST_TIMEOUT_MS);
     await assertion;
     expect(transportSignal?.aborted).toBe(true);
     expect(vi.getTimerCount()).toBe(0);
@@ -158,5 +158,21 @@ describe('public message transport', () => {
     const controller=new AbortController(); controller.abort();
     await expect(analyzeMessage({text:'hello',inspect_links:false},controller.signal)).rejects.toMatchObject({code:'cancelled'});
     expect(fetcher).not.toHaveBeenCalled();
+  });
+});
+
+describe('reason codes added with the scam-scenario rules', () => {
+  it('keeps the new codes and their host facts instead of degrading them to unknown_reason', () => {
+    const parsed = parseAnalysisResponse({
+      ...response(), assessment: 'suspicious',
+      reasons: [
+        {code:'shortened_link',strength:'medium',source:'url',link_id:'link_1',params:{display_host:'bit.ly'}},
+        {code:'high_abuse_domain_ending',strength:'medium',source:'url',link_id:'link_1',params:{display_host:'example.top'}},
+        {code:'scam_scenario',strength:'medium',source:'message',link_id:null,params:{}},
+        {code:'brand_destination_mismatch',strength:'strong',source:'message',link_id:'link_1',params:{brand:'isracard'}},
+      ],
+    });
+    expect(parsed.reasons.map(reason => reason.code)).toEqual(['shortened_link', 'high_abuse_domain_ending', 'scam_scenario', 'brand_destination_mismatch']);
+    expect(parsed.reasons[0].params).toEqual({display_host:'bit.ly'});
   });
 });

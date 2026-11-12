@@ -24,21 +24,25 @@ _HEBREW_REQUESTS = (
     r'עדכן|עדכנ(?:י|ו)|לעדכן|תעדכן|תעדכנ(?:י|ו)',
     r'השלם|השלימ(?:י|ו)|להשלים|תשלים(?:י|ו)?',
     r'אמת|אמת(?:י|ו)|לאמת|תאמת(?:י|ו)?',
+    # Gift-card and "buy this for me" requests.
+    r'קנה|קנ(?:י|ו)|לקנות|תקנה|תקנ(?:י|ו)|רכוש|לרכוש',
 )
 _REQUEST = re.compile(
-    r'\b(?:send|share|give|enter|provide|confirm|submit|reply|pay|transfer|needs?|settle|update|verify)\b|'
+    r'\b(?:send|share|give|enter|provide|confirm|submit|reply|pay|transfer|needs?|settle|update|verify|buy|purchase|forward)\b|'
     r'(?<!\w)(?:' + '|'.join(_HEBREW_REQUESTS) + r')(?!\w)', re.I,
 )
 _SECRET = re.compile(
-    r'\b(?:otps?|passwords?|passcodes?|pins?|verification codes?|security codes?)\b|'
-    r'(?<!\w)ו?(?:ה?סיסמ(?:ה|א|אות|ות)|ה?קוד(?:י|ים)? (?:ה)?אימות|'
-    r'ה?קוד(?:ים)? חד פעמי(?:ים)?)(?!\w)', re.I,
+    r'\b(?:otps?|passwords?|passcodes?|pins?|verification codes?|security codes?|login codes?|'
+    r'\d[- ]digit codes?|codes? (?:we|i) (?:just )?sent)\b|'
+    r'(?<!\w)ו?(?:ה?סיסמ(?:ה|א|אות|ות)|ה?קוד(?:י|ים)? (?:ה)?(?:אימות|אישור|כניסה|אבטחה)|'
+    r'ה?קוד(?:ים)? חד פעמי(?:ים)?|קוד בן \d+ ספרות|ה?קוד ש(?:קיבלת|קבלת|נשלח|שלחתי|שלחנו)\w*)(?!\w)', re.I,
 )
 _PAYMENT = re.compile(
     r'\b(?:payment|money|fees?|bank details|card details|credit card|card number|cvv|customs|fine|'
-    r'outstanding balance|billing details)\b|'
+    r'outstanding balance|billing details|payment method|gift cards?|wire transfer|bitcoin|btc|toll)\b|'
     r'(?:תשלום|כסף|פרטי אשראי|פרטי כרטיס|פרטי האשראי|פרטי הכרטיס|דמי משלוח|דמי מכס|מכס|דמי שחרור|'
-    r'כרטיס האשראי|אמצעי תשלום|קנס|חוב)', re.I)
+    r'כרטיס האשראי|אמצעי תשלום|קנס|חוב|שקל|ש"ח|ש״ח|₪|בביט|בפייבוקס|העברה בנקאית|פרטי חשבון|'
+    r'כרטיס(?:י)? מתנה|גיפט קארד)', re.I)
 _NEGATED_ACTION_PREFIX = re.compile(
     r"(?:\b(?:do not|don't|never|must not|should not|shouldn't|not to)\s+"
     r"(?:(?:ever|please)\s+)*|(?:אל|לא|אין)\s+)$", re.I,
@@ -65,7 +69,38 @@ _URGENCY = re.compile(
     r'\b(?:now|immediately|urgent(?:ly)?|within \d+ (?:minutes|hours)|today|by midnight|or (?:your|the) '
     r'(?:account|parcel|package))\b|'
     r'(?:עכשיו|מיד|דחוף|בדחיפות|עד היום|בחצות|היום בלבד|תוך \d+ (?:שעות|דקות)|אחרת)', re.I)
+# Plain money, as opposed to card, bank or billing details and official charges.
+_PERSONAL_MONEY = re.compile(r'\b(?:money|gift cards?|bitcoin|btc)\b|(?:כסף|שקל|ש"ח|ש״ח|₪|בביט|בפייבוקס|כרטיס(?:י)? מתנה|גיפט קארד)', re.I)
+# Official domains whose links lead to whoever created them, not to the organization.
+_PERSONAL_LINK_HOSTS = frozenset({'wa.me', 't.me', 'paypal.me'})
+# Explicit pressure. "today"/"now" alone are ordinary between people who know each other.
+_PRESSURE = re.compile(
+    r'\b(?:immediately|urgent(?:ly)?|asap|right now|within \d+ (?:minutes|hours))\b|'
+    r'(?:מיד|דחוף|בדחיפות|בהקדם|תוך \d+ (?:שעות|דקות))', re.I)
+# Scenarios that scam messages reuse, each tied to a call to follow a link.
+_SCENARIOS = re.compile(
+    # Delivery that failed or is being held.
+    r'(?:חבילה|חבילת|משלוח|הזמנה)\S*.{0,40}(?:לא נמסר|ממתינ|מעוכב|עוכב|נכשל|הוחזר)|'
+    r'\b(?:package|parcel|delivery|shipment|order)\b.{0,40}\b(?:could not be delivered|not delivered|undeliverable|'
+    r'on hold|is being held|failed|is waiting)\b|'
+    # Prizes, refunds and grants nobody applied for.
+    r'זכית|זכיתם|\byou(?: have|\'ve)? (?:won|been selected)\b|\bclaim your (?:prize|reward|refund)\b|'
+    r'מגיע(?:ה)? לך (?:החזר|מענק|זיכוי|פיצוי)|החזר מס|זכאות\S* ל(?:מענק|החזר)|\btax refund\b|'
+    r'לקבלת (?:הכסף|ההחזר|המענק|הפרס)|'
+    # Blocked card or account.
+    r'(?:כרטיס|חשבונ?)\S*.{0,20}(?:נחסם|הושעה|הוגבל|יושעה|ייחסם|יחסם)|פעילות חריגה|'
+    r'\b(?:account|card|subscription)\b.{0,30}\b(?:locked|limited|suspended|blocked|expired|on hold)\b|'
+    r'\bunusual (?:sign[- ]?in|activity)\b|'
+    # Service about to be cut off, and vouchers for people "selected" at random.
+    r'(?:קו|חשמל|שירות|מנוי|חשבונ?)\S*.{0,25}(?:ינותק|יבוטל|ייסגר|יופסק)|נבחרת(?:ם)? ל(?:קבל|זכות)|שובר\S* בשווי|'
+    r'\bwill be (?:deactivated|disconnected|cancell?ed|deleted|terminated)\b|'
+    # Easy money for remote work.
+    r'(?:עבודה|עובדים|משרה) מהבית|\bwork from home\b.{0,60}\b(?:per day|daily|a day)\b', re.I)
+# "This is my new number" followed by a request is the family-impersonation opener.
+_NEW_NUMBER = re.compile(r"\b(?:this is|it'?s|here is) my new (?:number|phone)\b|המספר החדש שלי|מספר חדש שלי", re.I)
 _THREAT = re.compile(r'\b(?:account.{0,30}(?:suspend|close|block)|suspended|locked out)\b|(?:החשבון.{0,25}(?:ייסגר|יחסם|ייחסם))', re.I)
+_DESTINATION_WARNINGS = frozenset({'brand_destination_mismatch', 'lookalike_host', 'credential_form',
+                                  'payment_form', 'certificate_mismatch'})
 _LOGIN = re.compile(r'\b(?:log[ -]?in|sign[ -]?in)\b|(?:היכנס|כניסה)', re.I)
 
 
@@ -116,31 +151,59 @@ def _positive_actions(prose: str, pattern: re.Pattern):
 
 
 def _solicitation_codes(prose: str) -> set[str]:
-    codes = set()
+    return set(_solicitations(prose))
+
+
+def _solicitations(prose: str) -> dict[str, bool]:
+    """Requested codes; the value is True when only plain money was requested."""
+    codes: dict[str, bool] = {}
     for _, requested in _positive_actions(prose, _REQUEST):
         if _SECRET.search(requested):
-            codes.add('credential_request')
+            codes['credential_request'] = False
         if _PAYMENT.search(requested):
-            codes.add('payment_request')
+            plain = not _PAYMENT.search(_PERSONAL_MONEY.sub(' ', requested))
+            codes['payment_request'] = codes.get('payment_request', True) and plain
     return codes
 
 
 def text_evidence(parsed: ParsedMessage) -> list[Reason]:
     prose = _prose(parsed)
     reasons: list[Reason] = []
-    codes = _solicitation_codes(prose)
+    codes = _solicitations(prose)
     if _THREAT.search(prose) and any(_positive_actions(prose, _LOGIN)):
-        codes.add('credential_request')
+        codes['credential_request'] = False
     for link in parsed.links:
         if any(c in link.raw for c in '\u202a\u202b\u202d\u202e\u2066\u2067\u2068') and _LOGIN.search(prose):
             reasons.append(Reason(code='suspicious_obfuscation', strength='medium', source='message', link_id=link.link_id))
+    brands = claimed_brands(prose)
+    threat = bool(_THREAT.search(prose))
+    actionable = False
     for code in sorted(codes):
-        reasons.append(Reason(code=code, strength='strong', source='message'))
-    if codes and (_URGENCY.search(prose) or _THREAT.search(prose)):
-        reasons.append(Reason(code='urgency', strength='strong' if _THREAT.search(prose) else 'medium', source='message'))
+        strength = 'strong'
+        if codes[code] and not (parsed.links or threat or brands):
+            # People who know each other ask for money all the time. With no
+            # link, threat or named organization it is a warning only under
+            # explicit pressure ("urgent", "immediately").
+            if not _PRESSURE.search(prose):
+                continue
+            strength = 'medium'
+        actionable = True
+        reasons.append(Reason(code=code, strength=strength, source='message'))
+    if actionable and (_URGENCY.search(prose) or threat):
+        reasons.append(Reason(code='urgency', strength='strong' if threat else 'medium', source='message'))
+    # A reused scam scenario matters only when it steers the reader to a link
+    # outside the domains of the organizations this registry knows.
+    if _SCENARIOS.search(prose) and any(
+        link.canonical_url and link.display_host
+        and (link.display_host in _PERSONAL_LINK_HOSTS or not is_official_domain(link.display_host))
+        for link in parsed.links
+    ):
+        reasons.append(Reason(code='scam_scenario', strength='medium', source='message'))
+    elif _NEW_NUMBER.search(prose) and any(_positive_actions(prose, _REQUEST)):
+        reasons.append(Reason(code='scam_scenario', strength='medium', source='message'))
     # Compare explicit named claims using the same brand-family roots as URL
     # evidence. Generic bank vocabulary and brand words inside URLs are not claims.
-    for brand in sorted(claimed_brands(prose)):
+    for brand in sorted(brands):
         roots = official_domains_for_brand(brand)
         if not roots:
             continue
@@ -156,22 +219,33 @@ def text_evidence(parsed: ParsedMessage) -> list[Reason]:
 def assess_message(parsed: ParsedMessage, links: list[LinkResult]) -> AssessmentSummary:
     message_reasons = text_evidence(parsed)
     all_reasons = message_reasons + [reason for link in links for reason in link.reasons]
+    # A shortened link only hides its destination. It becomes a warning when the
+    # message itself gives a reason to care where the link leads.
+    if message_reasons or claimed_brands(_prose(parsed)):
+        all_reasons = [reason.model_copy(update={'strength': 'medium'}) if reason.code == 'shortened_link' else reason
+                       for reason in all_reasons]
     # Retain highest-risk explanations first if the message reaches the contract cap.
     order = {'strong': 0, 'medium': 1, 'info': 2}
     reasons = sorted(all_reasons, key=lambda reason: order[reason.strength])[:MAX_REASONS]
     message_codes = {reason.code for reason in message_reasons}
     warning = any(reason.strength in ('strong', 'medium') for reason in all_reasons)
     dangerous = any(link.assessment == 'phishing' for link in links)
-    solicits = bool(message_codes & {'credential_request', 'payment_request'})
+    solicitation = {'credential_request', 'payment_request'}
+    solicits = any(reason.code in solicitation and reason.strength == 'strong' for reason in message_reasons)
     # Urgency alone adds context, but a request plus an independent destination
     # warning (or an explicit threat tied to secret/payment solicitation) is
-    # needed for phishing. Generic login under pressure remains suspicious.
+    # needed for phishing. Generic login under pressure remains suspicious
+    # unless the destination itself contradicts the organization named.
     direct_solicitation = bool(_solicitation_codes(_prose(parsed)))
     contextual_risk = solicits and direct_solicitation and any(
-        reason.code not in {'credential_request', 'payment_request'}
+        reason.code not in solicitation
         and (reason.strength == 'strong' or (reason.source != 'message' and reason.strength == 'medium'))
         for reason in all_reasons
     )
+    destination_contradiction = solicits and any(
+        reason.strength == 'strong' and reason.code in _DESTINATION_WARNINGS for reason in all_reasons
+    )
+    contextual_risk = contextual_risk or destination_contradiction
     limitations = list(dict.fromkeys(code for link in links for code in link.limitations))
     unsupported = not parsed.supported_text and bool(re.search(r'[^\W\d_]', _prose(parsed), re.UNICODE))
     if unsupported:
@@ -183,7 +257,9 @@ def assess_message(parsed: ParsedMessage, links: list[LinkResult]) -> Assessment
         if link.inspection_status == 'not_requested':
             # Static scope can complete without visiting pages. Link-level
             # unknown and the inspection-disabled caveat remain visible.
-            return parsed.supported_text and link.limitations == ['inspection_disabled']
+            # A shortened link is the exception: nothing about its destination was seen.
+            return (parsed.supported_text and link.limitations == ['inspection_disabled']
+                    and not any(reason.code == 'shortened_link' for reason in link.reasons))
         return (link.inspection_status == 'completed' and link.assessment != 'unknown'
                 and not link.limitations)
 

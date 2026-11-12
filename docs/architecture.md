@@ -111,6 +111,9 @@ by digest.
   (IPv6 grouped by /64). Behind a reverse proxy, configure Uvicorn's
   `--proxy-headers`/`--forwarded-allow-ips` so the client address is the real one.
   With several workers, use a shared store such as Redis.
+  Uvicorn also reads `FORWARDED_ALLOW_IPS`; set it to the proxy's address range
+  rather than `*`, which would let any client choose its own rate-limit identity.
+- With `ENV=prod` the interactive API docs (`/docs`, `/redoc`, `/openapi.json`) are not served.
 - The database is only needed for the admin/key routes and `/readyz`. If it is
   unreachable at startup, the API logs a warning and keeps analyzing messages.
 - `NEXT_PUBLIC_API_BASE_URL` is compiled into the web bundle, so set it as a

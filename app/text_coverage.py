@@ -19,6 +19,9 @@ because unless until before after of to from for with without by via in on at
 as is are was were be been being have has had do does did not no never must
 should can cannot will would could may might please here there now then today
 tomorrow yesterday also still only all any some each other than so
+about into onto over under up down out off through during between against while since among around
+across within along toward towards upon per just very too more most less much many few both either
+neither such same own again already soon always often ever yet
 """.split())
 # These existing anchors can introduce a noun phrase containing several
 # modifiers. Classifying their grammatical role adds no content-word lexicon.
@@ -29,6 +32,8 @@ _HE = frozenset("""
 אצל בין ליד בלי עד כדי כי אם אבל או גם רק כל לא אל אין יש היה היתה יהיה
 מה מי איך למה מתי איפה האם אפשר נא בבקשה כאן שם פה היום מחר אתמול עכשיו
 אחרי לפני בזמן עדיין בכתובת
+דרך עקב בשל לאחר כבר עוד מאוד יותר פחות כמו כאשר אשר אך אולם לכן כך תוך מול נגד ללא לפי בגלל בשביל
+עבור אותו אותה אותם אותן הזה הזאת האלה כמה אחד אחת
 """.split())
 _GREETINGS = frozenset('hello hi goodbye thanks thankyou שלום תודה'.split())
 # Short conventional acknowledgments/link prompts can stand alone. This
@@ -36,6 +41,9 @@ _GREETINGS = frozenset('hello hi goodbye thanks thankyou שלום תודה'.spli
 _SHORT = _GREETINGS | frozenset('yes no read see look check review ראו בדקו כן לא'.split())
 _KEYBOARD_ROWS = ('qwertyuiop', 'asdfghjkl', 'zxcvbnm', 'קראטוןםפ', 'שדגכעיחלךף', 'זסבהנמצתץ',
                   'abcdefghijklmnopqrstuvwxyz', 'אבגדהוזחטיכלמנסעפצקרשת')
+# Hebrew abbreviations written with gershayim (ש"ח, בע"מ, ת"ז) and the shekel sign
+# are ordinary writing, not unreadable fragments.
+_HEBREW_ABBREVIATION = re.compile(r'[\u05d0-\u05ea]+["\u05f4\u201d\u201c][\u05d0-\u05ea]+|\u20aa')
 _WORD = re.compile(r"[^\W\d_]+(?:['’][^\W\d_]+)?", re.UNICODE)
 
 
@@ -137,6 +145,7 @@ def _repetitive(words: list[str]) -> bool:
 def supported_text(text: str) -> bool:
     """Assess prose after link exclusion; caller enforces 10,000 codepoints."""
     text = re.sub(r'[\w.+-]+@[\w.-]+', ' ', text)
+    text = _HEBREW_ABBREVIATION.sub(' ', text)
     # Preserve script identity, while tolerating accents and Hebrew niqqud.
     text = unicodedata.normalize('NFD', text)
     text = ''.join(c for c in text if not unicodedata.category(c).startswith('M'))

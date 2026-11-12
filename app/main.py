@@ -54,7 +54,10 @@ async def lifespan(application: FastAPI):
             await cleanup
 
 
-app = FastAPI(title='MobileShield AI', lifespan=lifespan)
+# Interactive API docs are a development aid; production serves the scan API only.
+_DOCS = ({'docs_url': None, 'redoc_url': None, 'openapi_url': None}
+         if settings.env.lower() == 'prod' else {})
+app = FastAPI(title='MobileShield AI', lifespan=lifespan, **_DOCS)
 app.state.scan_limiter = ScanRateLimiter(settings.rate_limit_per_minute)
 app.state.scan_work = RequestWorkAdmission()
 origins = [origin.strip() for origin in settings.cors_origins.split(',') if origin.strip()]

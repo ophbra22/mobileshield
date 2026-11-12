@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import ipaddress
 from urllib.parse import urlsplit
 
-from app.brand import claimed_brands, is_official_domain, official_domains_for_brand
+from app.brand import claimed_brands, is_official_domain, mixed_script_label, official_domains_for_brand
 from app.detection.brand_spoof_detector import analyze_brand_signals
 from app.detection.certificate_analyzer import fetch_certificate
 from app.detection.classifier import classify_evidence
@@ -11,7 +12,15 @@ from app.detection.domain_analyzer import analyze_domain
 from app.detection.safe_transport import UrlObservation
 from app.detection.url_normalizer import normalize_url
 from app.message_models import REASON_PARAM_KEYS, LinkCandidate, LinkResult, LinkTechnical, Reason
-from app.reputation import BLOCKLISTED_DOMAINS
+from app.reputation import BLOCKLISTED_DOMAINS, HIGH_ABUSE_SUFFIXES, LINK_SHORTENERS
+
+
+def _is_ip_literal(hostname: str) -> bool:
+    try:
+        ipaddress.ip_address(hostname.strip('[]'))
+        return True
+    except ValueError:
+        return False
 
 
 def collect_url_evidence(candidate: LinkCandidate, observation: UrlObservation | None) -> list[Reason]:
@@ -30,7 +39,14 @@ def collect_url_evidence(candidate: LinkCandidate, observation: UrlObservation |
 
     if candidate.parse_error or candidate.canonical_url is None:
         add('invalid_link', 'info', 'url')
+        if candidate.parse_error == 'ambiguous_url':
+            # user@host, backslashes and hidden control characters exist to
+            # mislead the reader about the real destination.
+            add('suspicious_obfuscation', 'medium', 'url')
         return reasons
+    blocked = bool(observation and 'destination_blocked' in observation.limitations)
+    # Where a link leads is unknown until inspection has followed it.
+    destination_unseen = observation is None or not observation.hops
     urls = [(candidate.canonical_url, 'url')]
     if observation:
         observed_urls = [hop.url for hop in observation.hops]
@@ -48,6 +64,14 @@ def collect_url_evidence(candidate: LinkCandidate, observation: UrlObservation |
             add('lookalike_host', 'strong', source, parts.hostname)
         if domain.obfuscated or domain.excessive_subdomains or domain.hyphen_count >= 3:
             add('suspicious_obfuscation', 'medium', source, parts.hostname)
+        if mixed_script_label(parts.hostname) or (_is_ip_literal(parts.hostname) and not blocked):
+            add('suspicious_obfuscation', 'medium', source, parts.hostname)
+        if destination_unseen and not blocked:
+            if parts.registrable_domain in LINK_SHORTENERS:
+                # Unknown rather than risky by itself; the message decides (see assess_message).
+                add('shortened_link', 'info', source, parts.hostname)
+            if parts.tld.rsplit('.', 1)[-1] in HIGH_ABUSE_SUFFIXES:
+                add('high_abuse_domain_ending', 'medium', source, parts.hostname)
         if parts.registrable_domain in BLOCKLISTED_DOMAINS:
             add('local_blocklist_hit', 'medium', source, parts.hostname)
     if observation:
