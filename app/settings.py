@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _INSECURE_DEFAULTS = {'change-me', 'change-me-server-key', 'change-me-now'}
@@ -21,6 +21,17 @@ class Settings(BaseSettings):
     jwt_secret: str = 'change-me'
     jwt_expires_minutes: int = 120
     server_key: str = 'change-me-server-key'
+
+    @field_validator('database_url')
+    @classmethod
+    def _pin_installed_postgres_driver(cls, value: str) -> str:
+        # Hosting providers hand out plain postgres:// or postgresql:// URLs.
+        # SQLAlchemy 2.1 resolves those to psycopg (v3), which is not installed,
+        # and the API then fails to start. Name the driver that is installed.
+        for scheme in ('postgresql://', 'postgres://'):
+            if value.startswith(scheme):
+                return 'postgresql+psycopg2://' + value[len(scheme):]
+        return value
 
     @model_validator(mode='after')
     def _refuse_placeholder_secrets_in_prod(self) -> 'Settings':
