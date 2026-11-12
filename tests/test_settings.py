@@ -40,3 +40,18 @@ def test_unreachable_database_does_not_stop_startup(monkeypatch):
     monkeypatch.setattr(database, 'engine', Down())
     monkeypatch.setattr(database.settings, 'db_startup_attempts', 1)
     assert database.initialize_database() is False
+
+
+@pytest.mark.parametrize('url', ['postgresql://u:p@host:5432/db', 'postgres://u:p@host:5432/db',
+                                 'postgresql+psycopg2://u:p@host:5432/db'])
+def test_provider_style_database_urls_use_the_installed_driver(url):
+    from sqlalchemy import create_engine
+
+    settings = Settings(_env_file=None, database_url=url)
+    assert settings.database_url == 'postgresql+psycopg2://u:p@host:5432/db'
+    assert create_engine(settings.database_url).dialect.driver == 'psycopg2'
+
+
+def test_other_database_urls_are_left_alone():
+    assert Settings(_env_file=None, database_url='sqlite://').database_url == 'sqlite://'
+
