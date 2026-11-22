@@ -34,11 +34,18 @@ _SECRET = re.compile(
     r'(?<!\w)ו?(?:ה?סיסמ(?:ה|א|אות|ות)|ה?קוד(?:י|ים)? (?:ה)?אימות|'
     r'ה?קוד(?:ים)? חד פעמי(?:ים)?)(?!\w)', re.I,
 )
+# A bare sum is a payment object too: "יש לשלם 7.90 ש"ח", "pay ₪7.90", "transfer 250 NIS".
+# Smishing often names only the amount, never the word "fee" or "payment".
+_CURRENCY = r'(?:₪|\$|€|£|ש["\'״׳]{1,2}ח|שקל(?:ים)?|ils|nis|shekels?|usd|eur|dollars?|euros?)'
+_AMOUNT = (
+    r'(?:(?<!\w)(?:₪|\$|€|£)\s?\d[\d,]*(?:\.\d+)?|'
+    r'(?<![\w.,])\d[\d,]*(?:\.\d+)?\s?' + _CURRENCY + r'(?!\w))'
+)
 _PAYMENT = re.compile(
     r'\b(?:payment|money|fees?|bank details|card details|credit card|card number|cvv|customs|fine|'
     r'outstanding balance|billing details)\b|'
     r'(?:תשלום|כסף|פרטי אשראי|פרטי כרטיס|פרטי האשראי|פרטי הכרטיס|דמי משלוח|דמי מכס|מכס|דמי שחרור|'
-    r'כרטיס האשראי|אמצעי תשלום|קנס|חוב)', re.I)
+    r'כרטיס האשראי|אמצעי תשלום|קנס|חוב)|' + _AMOUNT, re.I)
 _NEGATED_ACTION_PREFIX = re.compile(
     r"(?:\b(?:do not|don't|never|must not|should not|shouldn't|not to)\s+"
     r"(?:(?:ever|please)\s+)*|(?:אל|לא|אין)\s+)$", re.I,
@@ -80,7 +87,9 @@ def _prose(parsed: ParsedMessage) -> str:
 
 def _positive_actions(prose: str, pattern: re.Pattern):
     """Associate negation with its action, not every request in the sentence."""
-    for clause in re.split(r'[.!?;\n]|\bbut\b|אבל', prose, flags=re.I):
+    # A period ends a clause, except inside a number ("7.90", "15.12"): splitting
+    # there would separate a sum from the verb asking for it.
+    for clause in re.split(r'(?<!\d)\.|\.(?!\d)|[!?;\n]|\bbut\b|אבל', prose, flags=re.I):
         actions = list(pattern.finditer(clause))
         previous_negated = False
         for index, action in enumerate(actions):
