@@ -163,7 +163,7 @@ describe('message form with the real request lifecycle', () => {
     expect(screen.getByRole('link',{name:'Skip to content'})).toHaveFocus();
     expect(screen.getByRole('link',{name:'Skip to content'})).toHaveAttribute('href','#main-content');
     await user.tab();
-    expect(screen.getByRole('link',{name:/^MobileShield/})).toHaveAttribute('href','/');
+    expect(screen.getByRole('link',{name:/^PauseCheck/})).toHaveAttribute('href','/');
     await user.tab();
     expect(screen.getByRole('button',{name:/Switch to Hebrew/})).toHaveFocus();
     expect(screen.getByRole('link',{name:'Contact us'})).toHaveAttribute('href','mailto:MobileShield@gmail.com');

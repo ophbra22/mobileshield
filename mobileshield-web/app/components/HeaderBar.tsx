@@ -8,11 +8,9 @@ export function HeaderBar() {
   return (
     <header className="site-header">
       <Link href="/" className="brand">
-        <svg className="brand-mark" width="40" height="40" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 2.5l8 3.4v6.3c0 5-3.4 8.4-8 10.3-4.6-1.9-8-5.3-8-10.3V5.9z" fill="currentColor" />
-        </svg>
+        <span className="brand-mark" aria-hidden="true"><span /><span /></span>
         <div>
-          <span className="brand-name" dir="ltr">MobileShield</span>
+          <span className="brand-name" dir="ltr">PauseCheck</span>
           <span className="brand-tagline">{t.headerTagline}</span>
         </div>
       </Link>

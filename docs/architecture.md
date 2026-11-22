@@ -1,6 +1,6 @@
 # Architecture
 
-MobileShield helps a person decide what to do with a suspicious message. It
+PauseCheck helps a person decide what to do with a suspicious message. It
 examines the message wording and every link in it, explains concrete warning
 signs, and states plainly which checks could not run. It is a decision aid, not
 a guarantee that a message or site is safe.

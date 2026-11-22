@@ -1,5 +1,5 @@
 /**
- * Device-storage consent. MobileShield sets no cookies. The only optional item
+ * Device-storage consent. PauseCheck sets no cookies. The only optional item
  * it can keep on a device is the language preference (localStorage "ms_lang"),
  * and only after the visitor allows it. The choice itself is kept so the notice
  * is not shown again; that record is strictly necessary to respect the choice.

@@ -1,6 +1,6 @@
-# MobileShield
+# PauseCheck
 
-**A bilingual (Hebrew/English) phishing-message checker.** Paste a suspicious SMS, WhatsApp or email message and MobileShield explains *why* it looks risky: credential or payment requests, pressure tactics, brand impersonation, look-alike domains and dangerous landing pages.
+**A bilingual (Hebrew/English) phishing-message checker.** Paste a suspicious SMS, WhatsApp or email message and PauseCheck explains *why* it looks risky: credential or payment requests, pressure tactics, brand impersonation, look-alike domains and dangerous landing pages.
 
 ### 🔗 Live demo: **[mobileshield-web.onrender.com](https://mobileshield-web.onrender.com)**
 
@@ -30,7 +30,7 @@ Try it with this message:
 
 ## Why
 
-Most phishing in Israel now arrives as a short text message ("your package is held", "your bank account will be blocked") rather than a web page. Existing URL scanners judge only the link and often ignore Hebrew. MobileShield analyzes the **whole message**, so the text and the link are judged together. A message that asks for your password and points to a domain that doesn't belong to the bank it names is flagged, even when the domain is brand new and on no blocklist.
+Most phishing in Israel now arrives as a short text message ("your package is held", "your bank account will be blocked") rather than a web page. Existing URL scanners judge only the link and often ignore Hebrew. PauseCheck analyzes the **whole message**, so the text and the link are judged together. A message that asks for your password and points to a domain that doesn't belong to the bank it names is flagged, even when the domain is brand new and on no blocklist.
 
 ## Features
 
@@ -111,7 +111,7 @@ curl -s -X POST http://localhost:8000/v1/analyze-message \
 ## Tech stack
 
 - **Backend:** Python 3.11, FastAPI, Pydantic v2 (strict contracts), SQLAlchemy 2, PostgreSQL, `tldextract`, `idna`
-- **Frontend:** Next.js 15 (App Router), React 19, TypeScript, plain CSS with a self-hosted Heebo font (no third-party requests)
+- **Frontend:** Next.js 15 (App Router), React 19, TypeScript, plain CSS with a self-hosted Rubik font (no third-party requests)
 - **Testing:** pytest (863 hermetic tests that make no network or DNS calls), Vitest + Testing Library (130 tests), Playwright cross-browser tests on Chromium, Firefox and WebKit at phone, tablet and desktop sizes, axe-core WCAG 2.1 AA checks on every page, Ruff
 - **Infrastructure:** Docker, Docker Compose, GitHub Actions (tests, lint, type checks, build, cross-browser runs with screenshots, and dependency audits)
 
@@ -199,7 +199,7 @@ docs/                       # API contract, architecture, screenshots
 
 ## Limitations
 
-MobileShield is a heuristic decision aid, **not a safety guarantee**. Detection relies on rules, a curated brand registry and a small local blocklist rather than live threat-intelligence feeds, so new or subtle attacks can be missed. Rate limiting is per process. Production needs a proxy that passes the real client IP, and several workers need a shared store such as Redis. User accounts and API-key routes are implemented but not mounted in the public beta. See [deployment notes](docs/architecture.md#deployment-notes).
+PauseCheck is a heuristic decision aid, **not a safety guarantee**. Detection relies on rules, a curated brand registry and a small local blocklist rather than live threat-intelligence feeds, so new or subtle attacks can be missed. Rate limiting is per process. Production needs a proxy that passes the real client IP, and several workers need a shared store such as Redis. User accounts and API-key routes are implemented but not mounted in the public beta. See [deployment notes](docs/architecture.md#deployment-notes).
 
 ## License
 

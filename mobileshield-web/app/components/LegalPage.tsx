@@ -18,7 +18,7 @@ function Text({ parts }: { parts: Inline[] }) {
 export function LegalPage({ id }: { id: LegalPageId }) {
   const { lang, t } = useLanguage();
   const doc = LEGAL[id][lang];
-  useEffect(() => { document.title = `${doc.title} | MobileShield`; }, [doc.title]);
+  useEffect(() => { document.title = `${doc.title} | PauseCheck`; }, [doc.title]);
   return (
     <div className="site-shell">
       <a className="skip-link" href="#main-content">{t.skipToContent}</a>
