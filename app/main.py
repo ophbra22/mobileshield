@@ -54,7 +54,7 @@ async def lifespan(application: FastAPI):
             await cleanup
 
 
-app = FastAPI(title='MobileShield AI', lifespan=lifespan)
+app = FastAPI(title='PauseCheck API', lifespan=lifespan)
 app.state.scan_limiter = ScanRateLimiter(settings.rate_limit_per_minute)
 app.state.scan_work = RequestWorkAdmission()
 origins = [origin.strip() for origin in settings.cors_origins.split(',') if origin.strip()]

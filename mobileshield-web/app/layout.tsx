@@ -1,10 +1,9 @@
 import type { Metadata, Viewport } from 'next';
-import '@fontsource-variable/heebo';
 import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'MobileShield | Check a suspicious message',
+  title: 'PauseCheck | Check a suspicious message',
   description: 'Paste a suspicious SMS, WhatsApp or email message and get a plain-language answer about its warning signs.',
   icons: [{ rel: 'icon', url: '/favicon.svg' }],
 };
@@ -13,7 +12,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#08415C',
+  themeColor: '#0F4F4A',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

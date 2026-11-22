@@ -22,7 +22,7 @@ export const LEGAL: Record<LegalPageId, { he: LegalDoc; en: LegalDoc }> = {
   privacy: {
     he: {
       title: 'מדיניות פרטיות',
-      intro: ['MobileShield בודק הודעות חשודות ומסביר את סימני האזהרה שבהן. בנינו את השירות כך שיאסוף כמה שפחות מידע. כאן מוסבר בדיוק מה קורה למידע, בהתאם לחוק הגנת הפרטיות, התשמ״א–1981, כפי שתוקן בתיקון 13.'],
+      intro: ['PauseCheck בודק הודעות חשודות ומסביר את סימני האזהרה שבהן. בנינו את השירות כך שיאסוף כמה שפחות מידע. כאן מוסבר בדיוק מה קורה למידע, בהתאם לחוק הגנת הפרטיות, התשמ״א–1981, כפי שתוקן בתיקון 13.'],
       sections: [
         { heading: 'מי מפעיל את האתר', blocks: [
           { p: [`האתר מופעל באופן פרטי על ידי ${OPERATOR}, שאחראי למידע שמעובד בו. לכל שאלה או בקשה בנושא פרטיות: `, mail, '.'] },
@@ -57,7 +57,7 @@ export const LEGAL: Record<LegalPageId, { he: LegalDoc; en: LegalDoc }> = {
     },
     en: {
       title: 'Privacy policy',
-      intro: ['MobileShield checks suspicious messages and explains their warning signs. We built it to collect as little as possible. This page explains exactly what happens to data, in line with the Israeli Protection of Privacy Law, 5741-1981, as amended by Amendment 13.'],
+      intro: ['PauseCheck checks suspicious messages and explains their warning signs. We built it to collect as little as possible. This page explains exactly what happens to data, in line with the Israeli Protection of Privacy Law, 5741-1981, as amended by Amendment 13.'],
       sections: [
         { heading: 'Who runs this site', blocks: [
           { p: [`This site is run privately by ${OPERATOR}, who is responsible for the data it processes. For any privacy question or request: `, mail, '.'] },
@@ -142,7 +142,7 @@ export const LEGAL: Record<LegalPageId, { he: LegalDoc; en: LegalDoc }> = {
   terms: {
     he: {
       title: 'תנאי שימוש',
-      intro: ['MobileShield הוא כלי חינמי שבודק הודעות ומסמן סימני אזהרה לפישינג ולהונאה. השימוש באתר מהווה הסכמה לתנאים אלה.'],
+      intro: ['PauseCheck הוא כלי חינמי שבודק הודעות ומסמן סימני אזהרה לפישינג ולהונאה. השימוש באתר מהווה הסכמה לתנאים אלה.'],
       sections: [
         { heading: 'אין הבטחה לבטיחות', blocks: [
           { p: ['הבדיקה אוטומטית ומבוססת על כללים. היא עלולה לפספס הונאה חדשה או מתוחכמת, ולפעמים לסמן הודעה תקינה כחשודה. התוצאה היא כלי עזר בלבד, ואינה ייעוץ משפטי, פיננסי או ביטחוני. לפני פעולה כמו תשלום או מסירת פרטים, אמתו מול הארגון בדרך שאתם כבר מכירים.'] },
@@ -178,7 +178,7 @@ export const LEGAL: Record<LegalPageId, { he: LegalDoc; en: LegalDoc }> = {
     },
     en: {
       title: 'Terms of use',
-      intro: ['MobileShield is a free tool that checks messages and flags warning signs of phishing and fraud. By using the site you agree to these terms.'],
+      intro: ['PauseCheck is a free tool that checks messages and flags warning signs of phishing and fraud. By using the site you agree to these terms.'],
       sections: [
         { heading: 'No safety guarantee', blocks: [
           { p: ['Checks are automatic and rule-based. They can miss new or sophisticated scams and sometimes flag a legitimate message. The result is a decision aid only, not legal, financial or security advice. Before paying or sharing details, verify with the organization through a contact method you already trust.'] },
