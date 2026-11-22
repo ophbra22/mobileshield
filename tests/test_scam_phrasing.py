@@ -56,3 +56,30 @@ def test_new_hebrew_request_verbs(text, code):
 def test_benign_and_negated_messages_stay_clear(text):
     result = run(text)
     assert not {'payment_request', 'credential_request'} & {reason.code for reason in result.reasons}
+
+
+@pytest.mark.parametrize('text', [
+    # The amount is the only payment cue; "7.90" must not split the clause at its decimal point.
+    'דואר ישראל: החבילה שלך מעוכבת. יש לשלם 7.90 ש"ח עד היום: https://israelpost-delivery.top/pay',
+    'דואר ישראל: החבילה שלך מעוכבת. לשחרור יש לשלם 7.90 ש״ח: https://israelpost-delivery.top/pay',
+    'Israel Post: your parcel is on hold. Pay 7.90 ILS today: https://israelpost-delivery.top/pay',
+    'Israel Post: your parcel is on hold. Please pay ₪7.90 today: https://israelpost-delivery.top/pay',
+    'בנק לאומי: החשבון שלך יחסם. יש להעביר 250 ש"ח עכשיו: https://leumi-secure.xyz',
+])
+def test_bare_amount_payment_requests_are_phishing(text):
+    result = run(text)
+    assert result.assessment == 'phishing'
+    assert 'payment_request' in {reason.code for reason in result.reasons}
+
+
+@pytest.mark.parametrize('text', [
+    'הפגישה מחר בשעה 10.30, תביא 50 ש"ח לאוכל',
+    'המחיר ירד ל-49.90 ₪ בסוף השבוע',
+    'אל תשלמו 7.90 ש"ח לאף אחד שמבקש בהודעה',
+    "Don't pay 7.90 ILS to anyone who texts you about a parcel",
+    'דואר ישראל: החבילה שלך הגיעה לסניף. לפרטים: https://www.israelpost.co.il',
+])
+def test_amounts_without_a_scam_request_stay_clear(text):
+    result = run(text)
+    assert 'payment_request' not in {reason.code for reason in result.reasons}
+    assert result.assessment != 'phishing'
